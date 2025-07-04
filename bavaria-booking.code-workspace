@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "snk-BavariaBooking",
+			"path": "../../../snk-BavariaBooking"
+		}
+	],
+	"settings": {}
+}
