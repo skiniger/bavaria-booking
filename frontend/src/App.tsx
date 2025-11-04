@@ -10,6 +10,9 @@ import Pension from './pages/Pension';
 import Staff from './pages/Staff';
 import LayoutManagement from './pages/LayoutManagement';
 import Settings from './pages/Settings';
+import MeitiAI from './pages/MeitiAI';
+import Analytics from './pages/Analytics';
+import Capacity from './pages/Capacity';
 
 // Layout
 import Layout from './components/Layout';
@@ -54,6 +57,9 @@ function App() {
             <Route path="/staff" element={<Staff />} />
             <Route path="/layout" element={<LayoutManagement />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/meiti-ai" element={<MeitiAI />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/capacity" element={<Capacity />} />
           </Routes>
         </Layout>
       </Router>
