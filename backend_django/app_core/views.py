@@ -135,7 +135,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             reservation.status = 'confirmed'
             reservation.save()
             return Response({'status': 'Reservierung bestätigt'}, status=status.HTTP_200_OK)
-        return Response({'status': 'Reservierung konnte nicht bestätigt werden (Status ist nicht 'pending_confirmation')'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': 'Reservierung konnte nicht bestätigt werden (Status ist nicht "pending_confirmation")'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel_reservation(self, request, pk=None):
@@ -198,17 +198,22 @@ class ReservationViewSet(viewsets.ModelViewSet):
         for table in candidate_tables:
             end_time = reservation_time + timezone.timedelta(minutes=duration_minutes)
 
-            overlapping = Reservation.objects.filter(
+            # Suche nach überlappenden Reservierungen
+            overlapping_reservations = Reservation.objects.filter(
                 table=table,
                 status__in=['confirmed', 'pending_confirmation'],
-                reservation_time__lt=end_time, # Andere Reservierung startet vor Ende dieser
-            ).exclude( # Filter, sodass auch die Endzeit der anderen Reservierung beachtet wird
-                reservation_time__gte=end_time # Andere Reservierung startet nach oder genau zum Ende dieser
-            ).filter( # Andere Reservierung endet nach Start dieser
-                models.ExpressionWrapper(models.F('reservation_time') + models.ExpressionWrapper(models.F('duration_minutes') * timezone.timedelta(minutes=1), output_field=models.DateTimeField()), output_field=models.DateTimeField())__gt=reservation_time
+                reservation_time__lt=end_time,  # Andere Reservierung startet vor Ende dieser
             )
 
-            if not overlapping.exists():
+            # Prüfe manuell, ob Endzeit der anderen Reservierung nach Start dieser liegt
+            has_overlap = False
+            for res in overlapping_reservations:
+                other_end_time = res.reservation_time + timezone.timedelta(minutes=res.duration_minutes)
+                if other_end_time > reservation_time:  # Andere Reservierung endet nach Start dieser
+                    has_overlap = True
+                    break
+
+            if not has_overlap:
                 available_tables.append(TableSerializer(table).data)
 
         if table_id: # Antwort für einen spezifischen Tisch
