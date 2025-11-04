@@ -1,10 +1,20 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db import IntegrityError
-from .models import Area, Table, Guest, Reservation
-from .serializers import AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer
+from django.db import IntegrityError, models
 from django.utils import timezone
+from datetime import datetime, timedelta
+
+from .models import (
+    Area, Table, Guest, Reservation, TableCombination,
+    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings
+)
+from .serializers import (
+    AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer,
+    TableCombinationSerializer, EmployeeSerializer, TimeTrackingSerializer,
+    PensionGuestSerializer, RegistrationFormSerializer, SystemSettingsSerializer,
+    DashboardStatsSerializer
+)
 
 class AreaViewSet(viewsets.ModelViewSet):
     """
@@ -202,3 +212,255 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 return Response({"table_id": table_id, "available": False, "reason": "Tisch ist im gewünschten Zeitraum belegt oder nicht reservierbar."})
         else: # Antwort für eine allgemeine Anfrage
             return Response({"requested_time": reservation_time, "duration": duration_minutes, "num_guests": num_guests, "available_tables": available_tables})
+
+
+class TableCombinationViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Tischkombinationen"""
+    queryset = TableCombination.objects.all()
+    serializer_class = TableCombinationSerializer
+
+
+class EmployeeViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Mitarbeiter"""
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
+
+    @action(detail=True, methods=['post'], url_path='check-in')
+    def check_in(self, request, pk=None):
+        """Check-in für Mitarbeiter"""
+        employee = self.get_object()
+
+        # Prüfe ob bereits eingecheckt
+        latest_entry = employee.time_entries.order_by('-check_in').first()
+        if latest_entry and not latest_entry.check_out:
+            return Response(
+                {'error': 'Mitarbeiter ist bereits eingecheckt'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Erstelle neuen Time Entry
+        time_entry = TimeTracking.objects.create(
+            employee=employee,
+            check_in=timezone.now()
+        )
+        employee.last_check_in = timezone.now()
+        employee.save()
+
+        return Response(TimeTrackingSerializer(time_entry).data)
+
+    @action(detail=True, methods=['post'], url_path='check-out')
+    def check_out(self, request, pk=None):
+        """Check-out für Mitarbeiter"""
+        employee = self.get_object()
+
+        # Hole aktuellen Time Entry
+        latest_entry = employee.time_entries.order_by('-check_in').first()
+        if not latest_entry or latest_entry.check_out:
+            return Response(
+                {'error': 'Mitarbeiter ist nicht eingecheckt'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        latest_entry.check_out = timezone.now()
+        latest_entry.save()
+        employee.last_check_out = timezone.now()
+        employee.save()
+
+        return Response(TimeTrackingSerializer(latest_entry).data)
+
+
+class TimeTrackingViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Zeiterfassung"""
+    queryset = TimeTracking.objects.select_related('employee').all()
+    serializer_class = TimeTrackingSerializer
+
+    def get_queryset(self):
+        """Filtern nach Mitarbeiter und Datum"""
+        queryset = super().get_queryset()
+        employee_id = self.request.query_params.get('employee_id')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if date_from:
+            queryset = queryset.filter(check_in__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(check_in__date__lte=date_to)
+
+        return queryset
+
+
+class PensionGuestViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Pensionsgäste"""
+    queryset = PensionGuest.objects.all()
+    serializer_class = PensionGuestSerializer
+
+    @action(detail=False, methods=['get'], url_path='search')
+    def search_guests(self, request):
+        """Suche nach Name oder Dokumentnummer"""
+        name = request.query_params.get('name')
+        document_number = request.query_params.get('document_number')
+        queryset = self.get_queryset()
+
+        if name:
+            queryset = queryset.filter(
+                models.Q(first_name__icontains=name) |
+                models.Q(last_name__icontains=name)
+            )
+        if document_number:
+            queryset = queryset.filter(document_number__icontains=document_number)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class RegistrationFormViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Meldescheine"""
+    queryset = RegistrationForm.objects.select_related('guest').all()
+    serializer_class = RegistrationFormSerializer
+
+    def get_queryset(self):
+        """Filtern nach Status, Datum, etc."""
+        queryset = super().get_queryset()
+        status_filter = self.request.query_params.get('status')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(arrival_date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(departure_date__lte=date_to)
+
+        return queryset
+
+    @action(detail=True, methods=['post'], url_path='check-in')
+    def check_in_guest(self, request, pk=None):
+        """Check-in für Pensionsgast"""
+        registration = self.get_object()
+        if registration.status != 'confirmed':
+            return Response(
+                {'error': 'Meldeschein muss bestätigt sein'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        registration.status = 'checked_in'
+        registration.save()
+        return Response(self.get_serializer(registration).data)
+
+    @action(detail=True, methods=['post'], url_path='check-out')
+    def check_out_guest(self, request, pk=None):
+        """Check-out für Pensionsgast"""
+        registration = self.get_object()
+        if registration.status != 'checked_in':
+            return Response(
+                {'error': 'Gast ist nicht eingecheckt'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        registration.status = 'checked_out'
+        registration.save()
+        return Response(self.get_serializer(registration).data)
+
+    @action(detail=True, methods=['post'], url_path='export')
+    def export_to_city(self, request, pk=None):
+        """Exportiere Meldeschein zur Stadt (BMG-konform)"""
+        registration = self.get_object()
+        if registration.status not in ['checked_in', 'checked_out']:
+            return Response(
+                {'error': 'Meldeschein muss eingecheckt oder ausgecheckt sein'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        registration.exported_to_city = True
+        registration.export_date = timezone.now()
+        registration.save()
+
+        # Hier würde die tatsächliche Export-Logik stattfinden
+        # z.B. PDF-Generierung, Datenübermittlung an Stadt-System, etc.
+
+        return Response({
+            'message': 'Meldeschein erfolgreich exportiert',
+            'export_date': registration.export_date
+        })
+
+
+class SystemSettingsViewSet(viewsets.ModelViewSet):
+    """API Endpunkt für Systemeinstellungen"""
+    queryset = SystemSettings.objects.all()
+    serializer_class = SystemSettingsSerializer
+
+
+class DashboardViewSet(viewsets.ViewSet):
+    """Dashboard Statistiken und Übersicht"""
+
+    @action(detail=False, methods=['get'], url_path='stats')
+    def get_stats(self, request):
+        """Dashboard Statistiken abrufen"""
+        today = timezone.now().date()
+
+        # Tisch-Statistiken
+        total_tables = Table.objects.count()
+        available_tables = Table.objects.filter(status='available').count()
+        occupied_tables = Table.objects.filter(status='occupied').count()
+        reserved_tables = Table.objects.filter(status='reserved').count()
+
+        # Reservierungs-Statistiken
+        today_reservations = Reservation.objects.filter(
+            reservation_time__date=today
+        ).count()
+        today_checkins = Reservation.objects.filter(
+            check_in_time__date=today
+        ).count()
+
+        # Mitarbeiter-Statistiken
+        active_employees = Employee.objects.filter(is_active_employee=True).count()
+
+        # Auslastungsrate
+        if total_tables > 0:
+            occupancy_rate = ((occupied_tables + reserved_tables) / total_tables) * 100
+        else:
+            occupancy_rate = 0
+
+        data = {
+            'total_tables': total_tables,
+            'available_tables': available_tables,
+            'occupied_tables': occupied_tables,
+            'reserved_tables': reserved_tables,
+            'today_reservations': today_reservations,
+            'today_checkins': today_checkins,
+            'active_employees': active_employees,
+            'current_occupancy_rate': round(occupancy_rate, 2)
+        }
+
+        serializer = DashboardStatsSerializer(data)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='capacity-by-area')
+    def capacity_by_area(self, request):
+        """Kapazitätsanzeige pro Bereich"""
+        areas = Area.objects.all()
+        result = []
+
+        for area in areas:
+            tables = area.tables.all()
+            total_tables = tables.count()
+            available = tables.filter(status='available').count()
+            occupied = tables.filter(status='occupied').count()
+            reserved = tables.filter(status='reserved').count()
+
+            result.append({
+                'area_id': area.id,
+                'area_name': area.name,
+                'color_code': area.color_code,
+                'total_capacity': area.total_capacity,
+                'total_tables': total_tables,
+                'available_tables': available,
+                'occupied_tables': occupied,
+                'reserved_tables': reserved,
+                'occupancy_rate': round(((occupied + reserved) / total_tables * 100) if total_tables > 0 else 0, 2)
+            })
+
+        return Response(result)
