@@ -2,7 +2,8 @@ import axios from 'axios';
 import type {
   Area, Table, TableCombination, Guest, Reservation,
   Employee, TimeTracking, PensionGuest, RegistrationForm,
-  SystemSettings, DashboardStats, AreaCapacity
+  SystemSettings, OpeningHours, SpecialOpeningHours,
+  DashboardStats, AreaCapacity
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -130,6 +131,25 @@ export const systemSettingsAPI = {
   getAll: () => api.get<SystemSettings[]>('/system-settings/'),
   getById: (id: string) => api.get<SystemSettings>(`/system-settings/${id}/`),
   update: (id: string, data: Partial<SystemSettings>) => api.patch<SystemSettings>(`/system-settings/${id}/`, data),
+};
+
+// ===== OPENING HOURS =====
+export const openingHoursAPI = {
+  getAll: (areaId?: string) => api.get<OpeningHours[]>('/opening-hours/', { params: { area_id: areaId } }),
+  getById: (id: string) => api.get<OpeningHours>(`/opening-hours/${id}/`),
+  create: (data: Partial<OpeningHours>) => api.post<OpeningHours>('/opening-hours/', data),
+  update: (id: string, data: Partial<OpeningHours>) => api.patch<OpeningHours>(`/opening-hours/${id}/`, data),
+  delete: (id: string) => api.delete(`/opening-hours/${id}/`),
+};
+
+// ===== SPECIAL OPENING HOURS =====
+export const specialOpeningHoursAPI = {
+  getAll: (params?: { area_id?: string; from_date?: string; to_date?: string }) =>
+    api.get<SpecialOpeningHours[]>('/special-opening-hours/', { params }),
+  getById: (id: string) => api.get<SpecialOpeningHours>(`/special-opening-hours/${id}/`),
+  create: (data: Partial<SpecialOpeningHours>) => api.post<SpecialOpeningHours>('/special-opening-hours/', data),
+  update: (id: string, data: Partial<SpecialOpeningHours>) => api.patch<SpecialOpeningHours>(`/special-opening-hours/${id}/`, data),
+  delete: (id: string) => api.delete(`/special-opening-hours/${id}/`),
 };
 
 // ===== DASHBOARD =====
