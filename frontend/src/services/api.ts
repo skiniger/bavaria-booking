@@ -3,7 +3,9 @@ import type {
   Area, Table, TableCombination, Guest, Reservation,
   Employee, TimeTracking, PensionGuest, RegistrationForm,
   SystemSettings, OpeningHours, SpecialOpeningHours,
-  DashboardStats, AreaCapacity
+  DashboardStats, AreaCapacity,
+  ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation,
+  OccupancyTrend, PredictiveInsight
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -156,6 +158,64 @@ export const specialOpeningHoursAPI = {
 export const dashboardAPI = {
   getStats: () => api.get<DashboardStats>('/dashboard/stats/'),
   getCapacityByArea: () => api.get<AreaCapacity[]>('/dashboard/capacity-by-area/'),
+};
+
+// ============================================================================
+// PHASE 3: KI & ANALYTICS API
+// ============================================================================
+
+// ===== CHAT CONVERSATIONS (MeitiAI) =====
+export const chatConversationsAPI = {
+  getAll: (params?: { employee_id?: string; is_active?: boolean }) =>
+    api.get<ChatConversation[]>('/chat-conversations/', { params }),
+  getById: (id: string) => api.get<ChatConversation>(`/chat-conversations/${id}/`),
+  create: (data: Partial<ChatConversation>) => api.post<ChatConversation>('/chat-conversations/', data),
+  update: (id: string, data: Partial<ChatConversation>) => api.patch<ChatConversation>(`/chat-conversations/${id}/`, data),
+  delete: (id: string) => api.delete(`/chat-conversations/${id}/`),
+  sendMessage: (id: string, content: string) =>
+    api.post<{ user_message: ChatMessage; assistant_message: ChatMessage }>(
+      `/chat-conversations/${id}/send-message/`,
+      { content }
+    ),
+};
+
+// ===== CHAT MESSAGES =====
+export const chatMessagesAPI = {
+  getAll: (conversationId?: string) =>
+    api.get<ChatMessage[]>('/chat-messages/', { params: { conversation_id: conversationId } }),
+  getById: (id: string) => api.get<ChatMessage>(`/chat-messages/${id}/`),
+};
+
+// ===== ANALYTICS SNAPSHOTS =====
+export const analyticsSnapshotsAPI = {
+  getAll: (params?: { from_date?: string; to_date?: string }) =>
+    api.get<AnalyticsSnapshot[]>('/analytics-snapshots/', { params }),
+  getById: (id: string) => api.get<AnalyticsSnapshot>(`/analytics-snapshots/${id}/`),
+  create: (data: Partial<AnalyticsSnapshot>) => api.post<AnalyticsSnapshot>('/analytics-snapshots/', data),
+  update: (id: string, data: Partial<AnalyticsSnapshot>) => api.patch<AnalyticsSnapshot>(`/analytics-snapshots/${id}/`, data),
+  delete: (id: string) => api.delete(`/analytics-snapshots/${id}/`),
+  generateToday: () => api.post<AnalyticsSnapshot>('/analytics-snapshots/generate-today/'),
+};
+
+// ===== CAPACITY RECOMMENDATIONS =====
+export const capacityRecommendationsAPI = {
+  getAll: (params?: { date?: string; area_id?: string; is_applied?: boolean }) =>
+    api.get<CapacityRecommendation[]>('/capacity-recommendations/', { params }),
+  getById: (id: string) => api.get<CapacityRecommendation>(`/capacity-recommendations/${id}/`),
+  create: (data: Partial<CapacityRecommendation>) => api.post<CapacityRecommendation>('/capacity-recommendations/', data),
+  update: (id: string, data: Partial<CapacityRecommendation>) => api.patch<CapacityRecommendation>(`/capacity-recommendations/${id}/`, data),
+  delete: (id: string) => api.delete(`/capacity-recommendations/${id}/`),
+  generate: (date: string, area_id: string) =>
+    api.post<CapacityRecommendation[]>('/capacity-recommendations/generate/', { date, area_id }),
+  apply: (id: string) => api.post<CapacityRecommendation>(`/capacity-recommendations/${id}/apply/`),
+};
+
+// ===== ANALYTICS API =====
+export const analyticsAPI = {
+  getOccupancyTrends: (days?: number) =>
+    api.get<OccupancyTrend[]>('/analytics/occupancy-trends/', { params: { days } }),
+  getPredictiveInsights: (days_ahead?: number) =>
+    api.get<PredictiveInsight[]>('/analytics/predictive-insights/', { params: { days_ahead } }),
 };
 
 export default api;

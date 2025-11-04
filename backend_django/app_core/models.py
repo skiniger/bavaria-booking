@@ -473,3 +473,139 @@ class SpecialOpeningHours(models.Model):
         verbose_name_plural = "Sonder-Öffnungszeiten"
         unique_together = ('area', 'date')
         ordering = ['date']
+
+
+# ============================================================================
+# PHASE 3: KI & ANALYTICS MODELS
+# ============================================================================
+
+class ChatConversation(models.Model):
+    """MeitiAI Chat-Konversationen"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="chat_conversations", verbose_name="Mitarbeiter")
+    title = models.CharField(max_length=200, verbose_name="Titel", blank=True, null=True)
+    is_active = models.BooleanField(default=True, verbose_name="Aktiv")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        title = self.title or f"Konversation {self.created_at.strftime('%d.%m.%Y %H:%M')}"
+        return f"{self.employee.username} - {title}"
+
+    class Meta:
+        verbose_name = "Chat-Konversation"
+        verbose_name_plural = "Chat-Konversationen"
+        ordering = ['-updated_at']
+
+
+class ChatMessage(models.Model):
+    """Einzelne Chat-Nachrichten"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name="messages", verbose_name="Konversation")
+
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ('user', 'Benutzer'),
+            ('assistant', 'Assistent'),
+            ('system', 'System'),
+        ],
+        verbose_name="Rolle"
+    )
+    content = models.TextField(verbose_name="Nachricht")
+
+    # Optional: Metadata für KI-Kontext
+    metadata = models.JSONField(default=dict, blank=True, verbose_name="Metadaten")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
+        return f"{self.role}: {preview}"
+
+    class Meta:
+        verbose_name = "Chat-Nachricht"
+        verbose_name_plural = "Chat-Nachrichten"
+        ordering = ['created_at']
+
+
+class AnalyticsSnapshot(models.Model):
+    """Tägliche/Wöchentliche Analytics-Snapshots für Trends"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    snapshot_date = models.DateField(verbose_name="Snapshot-Datum", unique=True)
+
+    # Reservierungs-Statistiken
+    total_reservations = models.PositiveIntegerField(default=0, verbose_name="Gesamt Reservierungen")
+    confirmed_reservations = models.PositiveIntegerField(default=0, verbose_name="Bestätigte Reservierungen")
+    cancelled_reservations = models.PositiveIntegerField(default=0, verbose_name="Stornierte Reservierungen")
+    no_show_count = models.PositiveIntegerField(default=0, verbose_name="No-Shows")
+
+    # Auslastungs-Statistiken
+    average_occupancy_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Durchschnittl. Auslastung %")
+    peak_occupancy_time = models.TimeField(null=True, blank=True, verbose_name="Haupt-Auslastungszeit")
+
+    # Gäste-Statistiken
+    total_guests_served = models.PositiveIntegerField(default=0, verbose_name="Gesamt bediente Gäste")
+    average_party_size = models.DecimalField(max_digits=4, decimal_places=2, default=0, verbose_name="Durchschnittl. Gruppengröße")
+
+    # Umsatz (optional)
+    total_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], verbose_name="Gesamtumsatz")
+
+    # KI-generierte Insights
+    ai_insights = models.JSONField(default=list, blank=True, verbose_name="KI-Insights")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Analytics {self.snapshot_date}"
+
+    class Meta:
+        verbose_name = "Analytics-Snapshot"
+        verbose_name_plural = "Analytics-Snapshots"
+        ordering = ['-snapshot_date']
+
+
+class CapacityRecommendation(models.Model):
+    """KI-generierte Empfehlungen für Kapazitätsoptimierung"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    date = models.DateField(verbose_name="Datum")
+    time_slot = models.TimeField(verbose_name="Zeitslot")
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name="capacity_recommendations", verbose_name="Bereich")
+
+    # Vorhersage
+    predicted_occupancy = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Vorhergesagte Auslastung %")
+    confidence_score = models.DecimalField(max_digits=4, decimal_places=2, verbose_name="Konfidenz-Score")
+
+    # Empfehlung
+    recommendation_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('increase_staff', 'Personal aufstocken'),
+            ('reduce_staff', 'Personal reduzieren'),
+            ('optimize_tables', 'Tische optimieren'),
+            ('accept_more_reservations', 'Mehr Reservierungen annehmen'),
+            ('limit_reservations', 'Reservierungen begrenzen'),
+            ('normal_operations', 'Normaler Betrieb'),
+        ],
+        verbose_name="Empfehlungstyp"
+    )
+    recommendation_text = models.TextField(verbose_name="Empfehlungstext")
+
+    # Basis der Empfehlung
+    based_on_data = models.JSONField(default=dict, verbose_name="Datenbasis")
+
+    is_applied = models.BooleanField(default=False, verbose_name="Angewendet")
+    applied_at = models.DateTimeField(null=True, blank=True, verbose_name="Angewendet am")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.area.name} - {self.date} {self.time_slot}: {self.recommendation_type}"
+
+    class Meta:
+        verbose_name = "Kapazitäts-Empfehlung"
+        verbose_name_plural = "Kapazitäts-Empfehlungen"
+        ordering = ['-date', '-time_slot']
+        unique_together = ('date', 'time_slot', 'area')

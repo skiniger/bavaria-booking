@@ -8,15 +8,20 @@ from datetime import datetime, timedelta
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
     Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
-    OpeningHours, SpecialOpeningHours
+    OpeningHours, SpecialOpeningHours,
+    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation
 )
 from .serializers import (
     AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer,
     TableCombinationSerializer, EmployeeSerializer, TimeTrackingSerializer,
     PensionGuestSerializer, RegistrationFormSerializer, SystemSettingsSerializer,
     OpeningHoursSerializer, SpecialOpeningHoursSerializer,
-    DashboardStatsSerializer
+    DashboardStatsSerializer,
+    ChatConversationSerializer, ChatMessageSerializer,
+    AnalyticsSnapshotSerializer, CapacityRecommendationSerializer,
+    OccupancyTrendSerializer, RevenueAnalyticsSerializer, PredictiveInsightSerializer
 )
+from . import ai_service
 
 class AreaViewSet(viewsets.ModelViewSet):
     """
@@ -513,4 +518,377 @@ class SpecialOpeningHoursViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(date__lte=to_date)
 
         return queryset
+
+
+# ============================================================================
+# PHASE 3: KI & ANALYTICS VIEWSETS
+# ============================================================================
+
+class ChatConversationViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für MeitiAI Chat-Konversationen
+    """
+    queryset = ChatConversation.objects.all().order_by('-updated_at')
+    serializer_class = ChatConversationSerializer
+
+    def get_queryset(self):
+        """Filter Konversationen nach Mitarbeiter"""
+        queryset = super().get_queryset()
+        employee_id = self.request.query_params.get('employee_id')
+        is_active = self.request.query_params.get('is_active')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+        return queryset
+
+    @action(detail=True, methods=['post'], url_path='send-message')
+    def send_message(self, request, pk=None):
+        """
+        Sendet eine Nachricht an den Chat und erhält KI-Antwort
+
+        POST /api/chat-conversations/{id}/send-message/
+        Body: { "content": "Wie ist die Auslastung?" }
+        """
+        conversation = self.get_object()
+        user_message_content = request.data.get('content', '')
+
+        if not user_message_content:
+            return Response(
+                {'error': 'Nachrichteninhalt darf nicht leer sein'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Benutzer-Nachricht speichern
+        user_message = ChatMessage.objects.create(
+            conversation=conversation,
+            role='user',
+            content=user_message_content
+        )
+
+        # Konversationshistorie für KI-Kontext
+        conversation_history = [
+            {
+                'role': msg.role,
+                'content': msg.content
+            }
+            for msg in conversation.messages.all()
+        ]
+
+        # KI-Antwort generieren
+        ai_response = ai_service.generate_chat_response(
+            conversation_history=conversation_history,
+            user_message=user_message_content
+        )
+
+        # KI-Antwort speichern
+        assistant_message = ChatMessage.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=ai_response
+        )
+
+        # Konversation aktualisieren
+        conversation.updated_at = timezone.now()
+        conversation.save()
+
+        # Serialisierte Antwort
+        return Response({
+            'user_message': ChatMessageSerializer(user_message).data,
+            'assistant_message': ChatMessageSerializer(assistant_message).data
+        }, status=status.HTTP_201_CREATED)
+
+
+class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API Endpunkt für Chat-Nachrichten (Read-only)
+    Nachrichten werden über ChatConversation.send_message erstellt
+    """
+    queryset = ChatMessage.objects.all().order_by('created_at')
+    serializer_class = ChatMessageSerializer
+
+    def get_queryset(self):
+        """Filter Nachrichten nach Konversation"""
+        queryset = super().get_queryset()
+        conversation_id = self.request.query_params.get('conversation_id')
+
+        if conversation_id:
+            queryset = queryset.filter(conversation_id=conversation_id)
+
+        return queryset
+
+
+class AnalyticsSnapshotViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Analytics-Snapshots
+    """
+    queryset = AnalyticsSnapshot.objects.all().order_by('-snapshot_date')
+    serializer_class = AnalyticsSnapshotSerializer
+
+    def get_queryset(self):
+        """Filter nach Datumsbereich"""
+        queryset = super().get_queryset()
+        from_date = self.request.query_params.get('from_date')
+        to_date = self.request.query_params.get('to_date')
+
+        if from_date:
+            queryset = queryset.filter(snapshot_date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(snapshot_date__lte=to_date)
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='generate-today')
+    def generate_today(self, request):
+        """
+        Generiert Analytics-Snapshot für heute
+
+        POST /api/analytics-snapshots/generate-today/
+        """
+        today = timezone.now().date()
+
+        # Prüfen, ob bereits Snapshot existiert
+        existing = AnalyticsSnapshot.objects.filter(snapshot_date=today).first()
+        if existing:
+            return Response(
+                {'message': 'Snapshot für heute existiert bereits', 'data': AnalyticsSnapshotSerializer(existing).data},
+                status=status.HTTP_200_OK
+            )
+
+        # Statistiken berechnen
+        today_reservations = Reservation.objects.filter(reservation_time__date=today)
+
+        total_reservations = today_reservations.count()
+        confirmed = today_reservations.filter(status='confirmed').count()
+        cancelled = today_reservations.filter(
+            status__in=['cancelled_by_guest', 'cancelled_by_restaurant']
+        ).count()
+        no_shows = today_reservations.filter(status='no_show').count()
+
+        total_guests = sum([r.number_of_guests for r in today_reservations])
+        avg_party_size = total_guests / total_reservations if total_reservations > 0 else 0
+
+        # Auslastung berechnen (vereinfacht)
+        all_tables = Table.objects.filter(is_reservable=True)
+        total_capacity = sum([t.capacity for t in all_tables])
+        occupancy_rate = (total_guests / total_capacity * 100) if total_capacity > 0 else 0
+
+        # Snapshot erstellen
+        snapshot_data = {
+            'total_reservations': total_reservations,
+            'confirmed_reservations': confirmed,
+            'cancelled_reservations': cancelled,
+            'no_show_count': no_shows,
+            'average_occupancy_rate': round(occupancy_rate, 2),
+            'total_guests_served': total_guests,
+            'average_party_size': round(avg_party_size, 2),
+            'total_revenue': 0,  # TODO: Integration mit POS-System
+        }
+
+        # KI-Insights generieren
+        insights = ai_service.generate_analytics_insights(snapshot_data)
+        snapshot_data['ai_insights'] = insights
+
+        snapshot = AnalyticsSnapshot.objects.create(
+            snapshot_date=today,
+            **snapshot_data
+        )
+
+        return Response(
+            AnalyticsSnapshotSerializer(snapshot).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class CapacityRecommendationViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Kapazitäts-Empfehlungen
+    """
+    queryset = CapacityRecommendation.objects.select_related('area').all().order_by('-date', '-time_slot')
+    serializer_class = CapacityRecommendationSerializer
+
+    def get_queryset(self):
+        """Filter nach Datum, Bereich, angewendet"""
+        queryset = super().get_queryset()
+        date = self.request.query_params.get('date')
+        area_id = self.request.query_params.get('area_id')
+        is_applied = self.request.query_params.get('is_applied')
+
+        if date:
+            queryset = queryset.filter(date=date)
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        if is_applied is not None:
+            queryset = queryset.filter(is_applied=is_applied.lower() == 'true')
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='generate')
+    def generate_recommendations(self, request):
+        """
+        Generiert Empfehlungen für einen Zeitraum
+
+        POST /api/capacity-recommendations/generate/
+        Body: { "date": "2025-01-10", "area_id": "uuid" }
+        """
+        target_date = request.data.get('date')
+        area_id = request.data.get('area_id')
+
+        if not target_date or not area_id:
+            return Response(
+                {'error': 'Datum und Bereich sind erforderlich'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Parse Datum
+        try:
+            target_date_obj = datetime.strptime(target_date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Ungültiges Datumsformat (YYYY-MM-DD)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Area validieren
+        try:
+            area = Area.objects.get(id=area_id)
+        except Area.DoesNotExist:
+            return Response(
+                {'error': 'Bereich nicht gefunden'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Empfehlungen für verschiedene Zeitslots generieren
+        time_slots = ['12:00:00', '14:00:00', '18:00:00', '20:00:00']
+        recommendations = []
+
+        for time_slot in time_slots:
+            # Prüfen ob bereits existiert
+            existing = CapacityRecommendation.objects.filter(
+                date=target_date_obj,
+                time_slot=time_slot,
+                area=area
+            ).first()
+
+            if existing:
+                recommendations.append(existing)
+                continue
+
+            # Vorhersage generieren
+            prediction = ai_service.predict_occupancy(
+                area_id=str(area_id),
+                target_date=target_date_obj,
+                target_time=time_slot
+            )
+
+            # Empfehlung generieren
+            recommendation_data = ai_service.generate_capacity_recommendation(
+                area_id=str(area_id),
+                predicted_occupancy=prediction['predicted_occupancy'],
+                date=target_date_obj,
+                time_slot=time_slot
+            )
+
+            # Speichern
+            recommendation = CapacityRecommendation.objects.create(
+                date=target_date_obj,
+                time_slot=time_slot,
+                area=area,
+                predicted_occupancy=prediction['predicted_occupancy'],
+                confidence_score=prediction['confidence_score'],
+                recommendation_type=recommendation_data['recommendation_type'],
+                recommendation_text=recommendation_data['recommendation_text'],
+                based_on_data=prediction['factors']
+            )
+            recommendations.append(recommendation)
+
+        return Response(
+            CapacityRecommendationSerializer(recommendations, many=True).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['post'], url_path='apply')
+    def apply_recommendation(self, request, pk=None):
+        """
+        Markiert Empfehlung als angewendet
+
+        POST /api/capacity-recommendations/{id}/apply/
+        """
+        recommendation = self.get_object()
+        recommendation.is_applied = True
+        recommendation.applied_at = timezone.now()
+        recommendation.save()
+
+        return Response(
+            CapacityRecommendationSerializer(recommendation).data,
+            status=status.HTTP_200_OK
+        )
+
+
+class AnalyticsAPIViewSet(viewsets.ViewSet):
+    """
+    Zusätzliche Analytics-Endpunkte
+    """
+
+    @action(detail=False, methods=['get'], url_path='occupancy-trends')
+    def occupancy_trends(self, request):
+        """
+        Auslastungstrends über die letzten N Tage
+
+        GET /api/analytics/occupancy-trends/?days=7
+        """
+        days = int(request.query_params.get('days', 7))
+        trends = ai_service.calculate_occupancy_trends(days=days)
+
+        return Response(
+            OccupancyTrendSerializer(trends, many=True).data,
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['get'], url_path='predictive-insights')
+    def predictive_insights(self, request):
+        """
+        KI-generierte Vorhersagen und Empfehlungen
+
+        GET /api/analytics/predictive-insights/?days_ahead=3
+        """
+        days_ahead = int(request.query_params.get('days_ahead', 3))
+        insights = []
+
+        today = timezone.now().date()
+        areas = Area.objects.filter(is_active=True)
+
+        for i in range(1, days_ahead + 1):
+            target_date = today + timedelta(days=i)
+
+            for area in areas:
+                # Vorhersage für 19:00 Uhr (Hauptzeit)
+                prediction = ai_service.predict_occupancy(
+                    area_id=str(area.id),
+                    target_date=target_date,
+                    target_time='19:00:00'
+                )
+
+                recommendation_data = ai_service.generate_capacity_recommendation(
+                    area_id=str(area.id),
+                    predicted_occupancy=prediction['predicted_occupancy'],
+                    date=target_date,
+                    time_slot='19:00:00'
+                )
+
+                insights.append({
+                    'insight_type': 'occupancy',
+                    'date': target_date,
+                    'area_name': area.name,
+                    'predicted_value': prediction['predicted_occupancy'],
+                    'confidence': prediction['confidence_score'],
+                    'recommendation': recommendation_data['recommendation_text']
+                })
+
+        return Response(
+            PredictiveInsightSerializer(insights, many=True).data,
+            status=status.HTTP_200_OK
+        )
 

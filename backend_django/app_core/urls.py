@@ -5,7 +5,9 @@ from .views import (
     TableCombinationViewSet, EmployeeViewSet, TimeTrackingViewSet,
     PensionGuestViewSet, RegistrationFormViewSet, SystemSettingsViewSet,
     OpeningHoursViewSet, SpecialOpeningHoursViewSet,
-    DashboardViewSet
+    DashboardViewSet,
+    ChatConversationViewSet, ChatMessageViewSet,
+    AnalyticsSnapshotViewSet, CapacityRecommendationViewSet, AnalyticsAPIViewSet
 )
 
 # Create a router and register our viewsets with it.
@@ -31,6 +33,13 @@ router.register(r'system-settings', SystemSettingsViewSet, basename='system-sett
 router.register(r'opening-hours', OpeningHoursViewSet, basename='opening-hours')
 router.register(r'special-opening-hours', SpecialOpeningHoursViewSet, basename='special-opening-hours')
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')
+
+# Phase 3: KI & Analytics
+router.register(r'chat-conversations', ChatConversationViewSet, basename='chat-conversation')
+router.register(r'chat-messages', ChatMessageViewSet, basename='chat-message')
+router.register(r'analytics-snapshots', AnalyticsSnapshotViewSet, basename='analytics-snapshot')
+router.register(r'capacity-recommendations', CapacityRecommendationViewSet, basename='capacity-recommendation')
+router.register(r'analytics', AnalyticsAPIViewSet, basename='analytics')
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [

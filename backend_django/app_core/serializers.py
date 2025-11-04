@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
     Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
-    OpeningHours, SpecialOpeningHours
+    OpeningHours, SpecialOpeningHours,
+    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation
 )
 from django.utils import timezone
 
@@ -275,3 +276,76 @@ class DashboardStatsSerializer(serializers.Serializer):
     today_checkins = serializers.IntegerField()
     active_employees = serializers.IntegerField()
     current_occupancy_rate = serializers.FloatField()
+
+
+# ============================================================================
+# PHASE 3: KI & ANALYTICS SERIALIZERS
+# ============================================================================
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    """Serializer für Chat-Nachrichten"""
+
+    class Meta:
+        model = ChatMessage
+        fields = '__all__'
+
+
+class ChatConversationSerializer(serializers.ModelSerializer):
+    """Serializer für Chat-Konversationen mit Nachrichten"""
+    messages = ChatMessageSerializer(many=True, read_only=True)
+    employee_name = serializers.SerializerMethodField()
+    message_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatConversation
+        fields = '__all__'
+
+    def get_employee_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}" if obj.employee.first_name else obj.employee.username
+
+    def get_message_count(self, obj):
+        return obj.messages.count()
+
+
+class AnalyticsSnapshotSerializer(serializers.ModelSerializer):
+    """Serializer für Analytics-Snapshots"""
+
+    class Meta:
+        model = AnalyticsSnapshot
+        fields = '__all__'
+
+
+class CapacityRecommendationSerializer(serializers.ModelSerializer):
+    """Serializer für Kapazitäts-Empfehlungen"""
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    recommendation_type_display = serializers.CharField(source='get_recommendation_type_display', read_only=True)
+
+    class Meta:
+        model = CapacityRecommendation
+        fields = '__all__'
+
+
+# Analytics API Response Serializers
+class OccupancyTrendSerializer(serializers.Serializer):
+    """Auslastungstrend über Zeitraum"""
+    date = serializers.DateField()
+    occupancy_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
+    total_reservations = serializers.IntegerField()
+    total_guests = serializers.IntegerField()
+
+
+class RevenueAnalyticsSerializer(serializers.Serializer):
+    """Umsatzanalyse"""
+    period = serializers.CharField()  # 'day', 'week', 'month'
+    total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2)
+    average_per_guest = serializers.DecimalField(max_digits=8, decimal_places=2)
+    reservation_count = serializers.IntegerField()
+
+
+class PredictiveInsightSerializer(serializers.Serializer):
+    """KI-generierte Vorhersage"""
+    insight_type = serializers.CharField()  # 'occupancy', 'revenue', 'staffing'
+    date = serializers.DateField()
+    predicted_value = serializers.DecimalField(max_digits=10, decimal_places=2)
+    confidence = serializers.DecimalField(max_digits=4, decimal_places=2)
+    recommendation = serializers.CharField()
