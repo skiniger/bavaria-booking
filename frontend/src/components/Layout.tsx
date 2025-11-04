@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Home, Calendar, Hotel, Users, Settings as SettingsIcon, Wifi, WifiOff } from 'lucide-react';
+import { Home, Calendar, Hotel, Users, Grid, Settings as SettingsIcon, Wifi, WifiOff } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +16,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Reservierungen', path: '/reservations', icon: Calendar },
     { name: 'Pension', path: '/pension', icon: Hotel },
     { name: 'Personal', path: '/staff', icon: Users },
+    { name: 'Layout', path: '/layout', icon: Grid },
     { name: 'Einstellungen', path: '/settings', icon: SettingsIcon },
   ];
 

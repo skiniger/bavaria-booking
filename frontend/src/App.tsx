@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Reservations from './pages/Reservations';
 import Pension from './pages/Pension';
 import Staff from './pages/Staff';
+import LayoutManagement from './pages/LayoutManagement';
 import Settings from './pages/Settings';
 
 // Layout
@@ -51,6 +52,7 @@ function App() {
             <Route path="/reservations" element={<Reservations />} />
             <Route path="/pension" element={<Pension />} />
             <Route path="/staff" element={<Staff />} />
+            <Route path="/layout" element={<LayoutManagement />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
