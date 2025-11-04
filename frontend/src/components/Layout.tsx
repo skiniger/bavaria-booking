@@ -1,10 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import {
   Home, Calendar, Hotel, Users, Grid, Settings as SettingsIcon,
-  Wifi, WifiOff, Bot, TrendingUp, Zap
+  Wifi, WifiOff, Bot, TrendingUp, Zap, Menu, X, Keyboard
 } from 'lucide-react';
+import ToastContainer from './ui/Toast';
+import SkipLink from './ui/SkipLink';
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,6 +15,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { isOnline } = useStore();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', path: '/dashboard', icon: Home, section: 'main' },
@@ -32,32 +35,78 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Skip Link for Accessibility */}
+      <SkipLink />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
+
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-40" role="banner">
         <div className="mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-bavaria-blue">BAVARIABOOKINGX</h1>
+            <div className="flex items-center space-x-3">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Menü öffnen"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+
+              <h1 className="text-xl sm:text-2xl font-bold text-bavaria-blue">
+                BAVARIABOOKINGX
+              </h1>
+
+              {/* Connection Status */}
               {!isOnline && (
-                <span className="flex items-center text-sm text-red-600">
+                <span className="hidden sm:flex items-center text-sm text-red-600">
                   <WifiOff className="w-4 h-4 mr-1" />
-                  Offline-Modus
+                  <span className="hidden md:inline">Offline-Modus</span>
                 </span>
               )}
               {isOnline && (
-                <span className="flex items-center text-sm text-green-600">
+                <span className="hidden sm:flex items-center text-sm text-green-600">
                   <Wifi className="w-4 h-4 mr-1" />
-                  Online
+                  <span className="hidden md:inline">Online</span>
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Keyboard Shortcut Hint - Desktop only */}
+              <button
+                onClick={() => {
+                  const event = new KeyboardEvent('keydown', { key: '?' });
+                  window.dispatchEvent(event);
+                }}
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Tastenkombinationen anzeigen"
+              >
+                <Keyboard className="w-4 h-4" />
+                <span className="text-xs">?</span>
+              </button>
+
+              {/* Date - Hidden on small screens */}
+              <span className="hidden md:block text-sm text-gray-600">
                 {new Date().toLocaleDateString('de-DE', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
+                })}
+              </span>
+              {/* Compact date for small/medium screens */}
+              <span className="md:hidden text-xs text-gray-600">
+                {new Date().toLocaleDateString('de-DE', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
                 })}
               </span>
             </div>
@@ -66,9 +115,26 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       <div className="flex">
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-md h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
-          <nav className="mt-6 px-4 space-y-6">
+        <aside
+          className={`
+            fixed lg:sticky top-16 left-0 z-30
+            w-64 bg-white shadow-md h-[calc(100vh-64px)]
+            overflow-y-auto transition-transform duration-300 ease-in-out
+            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}
+          role="navigation"
+          aria-label="Hauptnavigation"
+        >
+          <nav className="mt-6 px-4 space-y-6" aria-label="Seitennavigation">
             {/* Main Navigation */}
             <div>
               <h3 className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -82,6 +148,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                         isActive
                           ? 'bg-bavaria-blue text-white'
@@ -109,6 +176,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                         isActive
                           ? 'bg-bavaria-blue text-white'
@@ -133,6 +201,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                         isActive
                           ? 'bg-bavaria-blue text-white'
@@ -150,7 +219,12 @@ export default function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main
+          id="main-content"
+          className="flex-1 p-4 sm:p-6 lg:p-8 w-full lg:w-auto"
+          role="main"
+          aria-label="Hauptinhalt"
+        >
           {children}
         </main>
       </div>
