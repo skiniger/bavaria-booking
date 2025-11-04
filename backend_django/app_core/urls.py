@@ -4,6 +4,7 @@ from .views import (
     AreaViewSet, TableViewSet, GuestViewSet, ReservationViewSet,
     TableCombinationViewSet, EmployeeViewSet, TimeTrackingViewSet,
     PensionGuestViewSet, RegistrationFormViewSet, SystemSettingsViewSet,
+    OpeningHoursViewSet, SpecialOpeningHoursViewSet,
     DashboardViewSet
 )
 
@@ -27,6 +28,8 @@ router.register(r'registration-forms', RegistrationFormViewSet, basename='regist
 
 # System & Einstellungen
 router.register(r'system-settings', SystemSettingsViewSet, basename='system-settings')
+router.register(r'opening-hours', OpeningHoursViewSet, basename='opening-hours')
+router.register(r'special-opening-hours', SpecialOpeningHoursViewSet, basename='special-opening-hours')
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 
 # The API URLs are now determined automatically by the router.

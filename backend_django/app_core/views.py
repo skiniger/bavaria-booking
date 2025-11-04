@@ -7,12 +7,14 @@ from datetime import datetime, timedelta
 
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
-    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings
+    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
+    OpeningHours, SpecialOpeningHours
 )
 from .serializers import (
     AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer,
     TableCombinationSerializer, EmployeeSerializer, TimeTrackingSerializer,
     PensionGuestSerializer, RegistrationFormSerializer, SystemSettingsSerializer,
+    OpeningHoursSerializer, SpecialOpeningHoursSerializer,
     DashboardStatsSerializer
 )
 
@@ -464,3 +466,51 @@ class DashboardViewSet(viewsets.ViewSet):
             })
 
         return Response(result)
+
+
+
+class OpeningHoursViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Öffnungszeiten.
+    """
+    queryset = OpeningHours.objects.select_related("area").all().order_by("area", "weekday")
+    serializer_class = OpeningHoursSerializer
+
+    def get_queryset(self):
+        """
+        Optional: Filtern nach Bereich (area_id) via Query Parameter.
+        Beispiel: /api/opening-hours/?area_id=<uuid>
+        """
+        queryset = super().get_queryset()
+        area_id = self.request.query_params.get("area_id")
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        return queryset
+
+
+class SpecialOpeningHoursViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Sonder-Öffnungszeiten (Feiertage, Events).
+    """
+    queryset = SpecialOpeningHours.objects.select_related("area").all().order_by("date")
+    serializer_class = SpecialOpeningHoursSerializer
+
+    def get_queryset(self):
+        """
+        Optional: Filtern nach Bereich (area_id) oder Datumsbereich via Query Parameter.
+        Beispiel: /api/special-opening-hours/?area_id=<uuid>&from_date=2024-01-01&to_date=2024-12-31
+        """
+        queryset = super().get_queryset()
+        area_id = self.request.query_params.get("area_id")
+        from_date = self.request.query_params.get("from_date")
+        to_date = self.request.query_params.get("to_date")
+
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        if from_date:
+            queryset = queryset.filter(date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(date__lte=to_date)
+
+        return queryset
+

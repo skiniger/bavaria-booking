@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
-    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings
+    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
+    OpeningHours, SpecialOpeningHours
 )
 from django.utils import timezone
 
@@ -241,6 +242,25 @@ class SystemSettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SystemSettings
+        fields = '__all__'
+
+
+class OpeningHoursSerializer(serializers.ModelSerializer):
+    """Serializer für Öffnungszeiten"""
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    weekday_display = serializers.CharField(source='get_weekday_display', read_only=True)
+
+    class Meta:
+        model = OpeningHours
+        fields = '__all__'
+
+
+class SpecialOpeningHoursSerializer(serializers.ModelSerializer):
+    """Serializer für Sonder-Öffnungszeiten"""
+    area_name = serializers.CharField(source='area.name', read_only=True)
+
+    class Meta:
+        model = SpecialOpeningHours
         fields = '__all__'
 
 
