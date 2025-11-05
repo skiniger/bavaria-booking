@@ -4,6 +4,7 @@ import type { Reservation } from '../../types';
 import { X, User, Calendar, Clock, Users, CreditCard, MapPin, CheckCircle, XCircle, LogIn, LogOut, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import ExportButton from '../ui/ExportButton';
 
 interface ReservationDetailsProps {
   reservation: Reservation | null;
@@ -314,6 +315,16 @@ export default function ReservationDetails({
                 {updateStatusMutation.isPending ? 'Wird storniert...' : 'Stornieren'}
               </button>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                onExportPDF={() => reservationsAPI.exportSinglePDF(reservation.id)}
+                label="Als PDF exportieren"
+                size="md"
+                variant="secondary"
+              />
+            </div>
           </div>
 
           {/* Metadata */}

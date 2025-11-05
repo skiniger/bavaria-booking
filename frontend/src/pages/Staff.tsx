@@ -5,6 +5,8 @@ import { TimeTrackingForm } from '../components/staff/TimeTrackingForm';
 import { TimeCorrectionForm } from '../components/staff/TimeCorrectionForm';
 import { HoursOverview } from '../components/staff/HoursOverview';
 import { EmployeeList } from '../components/staff/EmployeeList';
+import ExportButton from '../components/ui/ExportButton';
+import { timeTrackingAPI } from '../services/api';
 
 type ViewMode = 'dashboard' | 'hours' | 'employees';
 
@@ -30,13 +32,20 @@ export default function Staff() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Personalverwaltung</h1>
-        <button
-          onClick={() => setShowTimeTrackingForm(true)}
-          className="px-4 py-2 bg-bavaria-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
-        >
-          <Clock className="h-5 w-5" />
-          <span>Ein-/Ausstempeln</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <ExportButton
+            onExportCSV={() => timeTrackingAPI.exportCSV()}
+            label="Zeiterfassung exportieren"
+            variant="secondary"
+          />
+          <button
+            onClick={() => setShowTimeTrackingForm(true)}
+            className="px-4 py-2 bg-bavaria-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+          >
+            <Clock className="h-5 w-5" />
+            <span>Ein-/Ausstempeln</span>
+          </button>
+        </div>
       </div>
 
       {/* View Mode Tabs */}

@@ -4,6 +4,7 @@ import type { RegistrationForm } from '../../types';
 import { X, User, Calendar, Hotel, Euro, CreditCard, FileCheck, Download, LogIn, LogOut, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import ExportButton from '../ui/ExportButton';
 
 interface RegistrationFormDetailsProps {
   form: RegistrationForm | null;
@@ -364,6 +365,16 @@ export default function RegistrationFormDetails({
                 {exportMutation.isPending ? 'Wird exportiert...' : 'Zur Stadt exportieren'}
               </button>
             )}
+
+            {/* PDF Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                onExportPDF={() => registrationFormsAPI.exportPDF(form.id)}
+                label="Meldeschein als PDF"
+                size="md"
+                variant="secondary"
+              />
+            </div>
           </div>
 
           {/* Metadata */}

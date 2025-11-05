@@ -9,6 +9,7 @@ import PensionGuestForm from '../components/pension/PensionGuestForm';
 import RegistrationFormComponent from '../components/pension/RegistrationFormComponent';
 import RegistrationFormList from '../components/pension/RegistrationFormList';
 import RegistrationFormDetails from '../components/pension/RegistrationFormDetails';
+import ExportButton from '../components/ui/ExportButton';
 
 export default function Pension() {
   const queryClient = useQueryClient();
@@ -94,6 +95,11 @@ export default function Pension() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <ExportButton
+            onExportCSV={() => pensionGuestsAPI.exportCSV()}
+            label="Gäste exportieren"
+            variant="secondary"
+          />
           <button
             onClick={handleNewMeldeschein}
             className="btn-primary flex items-center"
