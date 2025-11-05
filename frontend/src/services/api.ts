@@ -62,6 +62,9 @@ export const guestsAPI = {
   create: (data: Partial<Guest>) => api.post<Guest>('/guests/', data),
   update: (id: string, data: Partial<Guest>) => api.patch<Guest>(`/guests/${id}/`, data),
   delete: (id: string) => api.delete(`/guests/${id}/`),
+  exportCSV: () => {
+    window.open(`${API_BASE_URL}/guests/export-csv/`, '_blank');
+  },
 };
 
 // ===== RESERVATIONS =====
@@ -81,6 +84,17 @@ export const reservationsAPI = {
     duration: number;
     guests: number;
   }) => api.get('/reservations/check-availability/', { params }),
+  exportSinglePDF: (id: string) => {
+    window.open(`${API_BASE_URL}/reservations/${id}/export-pdf/`, '_blank');
+  },
+  exportListPDF: (params?: { date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/reservations/export-pdf/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
+  exportCSV: (params?: { date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/reservations/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
 };
 
 // ===== EMPLOYEES =====
@@ -102,6 +116,10 @@ export const timeTrackingAPI = {
   create: (data: Partial<TimeTracking>) => api.post<TimeTracking>('/time-tracking/', data),
   update: (id: string, data: Partial<TimeTracking>) => api.patch<TimeTracking>(`/time-tracking/${id}/`, data),
   delete: (id: string) => api.delete(`/time-tracking/${id}/`),
+  exportCSV: (params?: { employee_id?: string; date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/time-tracking/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
 };
 
 // ===== PENSION GUESTS =====
@@ -113,6 +131,9 @@ export const pensionGuestsAPI = {
   create: (data: Partial<PensionGuest>) => api.post<PensionGuest>('/pension-guests/', data),
   update: (id: string, data: Partial<PensionGuest>) => api.patch<PensionGuest>(`/pension-guests/${id}/`, data),
   delete: (id: string) => api.delete(`/pension-guests/${id}/`),
+  exportCSV: () => {
+    window.open(`${API_BASE_URL}/pension-guests/export-csv/`, '_blank');
+  },
 };
 
 // ===== REGISTRATION FORMS =====
@@ -126,6 +147,9 @@ export const registrationFormsAPI = {
   checkIn: (id: string) => api.post<RegistrationForm>(`/registration-forms/${id}/check-in/`),
   checkOut: (id: string) => api.post<RegistrationForm>(`/registration-forms/${id}/check-out/`),
   exportToCity: (id: string) => api.post(`/registration-forms/${id}/export/`),
+  exportPDF: (id: string) => {
+    window.open(`${API_BASE_URL}/registration-forms/${id}/export-pdf/`, '_blank');
+  },
 };
 
 // ===== SYSTEM SETTINGS =====

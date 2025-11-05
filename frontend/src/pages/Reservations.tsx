@@ -10,6 +10,7 @@ import ReservationCalendar from '../components/reservations/ReservationCalendar'
 import ReservationForm from '../components/reservations/ReservationForm';
 import ReservationDetails from '../components/reservations/ReservationDetails';
 import TableCombinationTool from '../components/reservations/TableCombinationTool';
+import ExportButton from '../components/ui/ExportButton';
 
 type ViewMode = 'grid' | 'calendar';
 
@@ -76,6 +77,12 @@ export default function Reservations() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <ExportButton
+            onExportPDF={() => reservationsAPI.exportListPDF()}
+            onExportCSV={() => reservationsAPI.exportCSV()}
+            label="Export"
+            variant="secondary"
+          />
           <button
             onClick={handleNewReservation}
             className="btn-primary flex items-center"

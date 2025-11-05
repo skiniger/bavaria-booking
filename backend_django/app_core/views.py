@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db import IntegrityError, models
 from django.utils import timezone
+from django.http import HttpResponse
 from datetime import datetime, timedelta
 
 from .models import (
@@ -22,6 +23,11 @@ from .serializers import (
     OccupancyTrendSerializer, RevenueAnalyticsSerializer, PredictiveInsightSerializer
 )
 from . import ai_service
+from .utils.pdf_exports import ReservationPDFExporter, RegistrationFormPDFExporter
+from .utils.csv_exports import (
+    TimeTrackingCSVExporter, GuestCSVExporter,
+    PensionGuestCSVExporter, ReservationCSVExporter
+)
 
 class AreaViewSet(viewsets.ModelViewSet):
     """
@@ -85,6 +91,23 @@ class GuestViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Gäste als CSV.
+        Beispiel: GET /api/guests/export-csv/
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = GuestCSVExporter()
+        csv_buffer = exporter.generate_guests_csv(queryset, include_gdpr=True)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"gaeste_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
@@ -225,6 +248,102 @@ class ReservationViewSet(viewsets.ModelViewSet):
         else: # Antwort für eine allgemeine Anfrage
             return Response({"requested_time": reservation_time, "duration": duration_minutes, "num_guests": num_guests, "available_tables": available_tables})
 
+    @action(detail=True, methods=['get'], url_path='export-pdf')
+    def export_single_pdf(self, request, pk=None):
+        """
+        Exportiert eine einzelne Reservierung als PDF.
+        Beispiel: GET /api/reservations/{id}/export-pdf/
+        """
+        reservation = self.get_object()
+        exporter = ReservationPDFExporter()
+        pdf_buffer = exporter.generate_single_reservation(reservation)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"reservierung_{reservation.reservation_id or reservation.id}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-pdf')
+    def export_list_pdf(self, request):
+        """
+        Exportiert mehrere Reservierungen als PDF.
+        Parameter: date_from, date_to (optional)
+        Beispiel: GET /api/reservations/export-pdf/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Filter by date range if provided
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__gte=date_from)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__lte=date_to)
+            except ValueError:
+                pass
+
+        # Limit to reasonable number
+        queryset = queryset[:200]
+
+        exporter = ReservationPDFExporter()
+        pdf_buffer = exporter.generate_reservation_list(queryset, date_from, date_to)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"reservierungen_{datetime.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Reservierungen als CSV.
+        Parameter: date_from, date_to (optional)
+        Beispiel: GET /api/reservations/export-csv/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Filter by date range if provided
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__gte=date_from)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__lte=date_to)
+            except ValueError:
+                pass
+
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = ReservationCSVExporter()
+        csv_buffer = exporter.generate_reservations_csv(queryset, date_from, date_to)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"reservierungen_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 class TableCombinationViewSet(viewsets.ModelViewSet):
     """API Endpunkt für Tischkombinationen"""
@@ -302,6 +421,44 @@ class TimeTrackingViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Zeiterfassung als CSV.
+        Parameter: employee_id, date_from, date_to (optional)
+        Beispiel: GET /api/time-tracking/export-csv/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Parse date parameters
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = TimeTrackingCSVExporter()
+        csv_buffer = exporter.generate_time_tracking_csv(queryset, date_from, date_to)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"zeiterfassung_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 class PensionGuestViewSet(viewsets.ModelViewSet):
     """API Endpunkt für Pensionsgäste"""
@@ -325,6 +482,23 @@ class PensionGuestViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Pensionsgäste als CSV.
+        Beispiel: GET /api/pension-guests/export-csv/
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = PensionGuestCSVExporter()
+        csv_buffer = exporter.generate_pension_guests_csv(queryset)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"pensionsgaeste_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class RegistrationFormViewSet(viewsets.ModelViewSet):
@@ -397,6 +571,21 @@ class RegistrationFormViewSet(viewsets.ModelViewSet):
             'message': 'Meldeschein erfolgreich exportiert',
             'export_date': registration.export_date
         })
+
+    @action(detail=True, methods=['get'], url_path='export-pdf')
+    def export_pdf(self, request, pk=None):
+        """
+        Exportiert einen Meldeschein als BMG-konformes PDF.
+        Beispiel: GET /api/registration-forms/{id}/export-pdf/
+        """
+        registration = self.get_object()
+        exporter = RegistrationFormPDFExporter()
+        pdf_buffer = exporter.generate_registration_form(registration)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"meldeschein_{registration.guest.last_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class SystemSettingsViewSet(viewsets.ModelViewSet):
