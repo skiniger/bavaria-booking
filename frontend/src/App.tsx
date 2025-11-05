@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from './store/useStore';
 import { useKeyboardShortcuts, type KeyboardShortcut } from './hooks/useKeyboardShortcuts';
 import KeyboardShortcutsDialog from './components/ui/KeyboardShortcutsDialog';
+import OnboardingTour from './components/ui/OnboardingTour';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -70,6 +71,8 @@ function AppContent() {
         onClose={() => setShowShortcuts(false)}
         shortcuts={shortcuts}
       />
+
+      <OnboardingTour />
     </>
   );
 }

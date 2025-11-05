@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, Shield, Database, Save } from 'lucide-react';
+import { Mail, Shield, Database, Save, HelpCircle, RotateCcw } from 'lucide-react';
 import { systemSettingsAPI } from '../../services/api';
 import { SystemSettings } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { resetOnboardingTour } from '../ui/OnboardingTour';
 
 export const AdvancedSettings: React.FC = () => {
   const queryClient = useQueryClient();
@@ -253,6 +254,47 @@ export const AdvancedSettings: React.FC = () => {
             <strong>Hinweis:</strong> Backups werden automatisch gemäß der konfigurierten
             Frequenz durchgeführt. Die Backup-Dateien werden auf dem Server gespeichert.
           </p>
+        </div>
+      </div>
+
+      {/* Help & Tour */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center space-x-3 mb-6">
+          <HelpCircle className="h-6 w-6 text-bavaria-blue" />
+          <h3 className="text-lg font-semibold text-gray-800">Hilfe & Einführung</h3>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-bavaria-blue">
+            <h4 className="font-medium text-gray-800 mb-2">Onboarding-Tour</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Lassen Sie sich durch die wichtigsten Funktionen von BAVARIABOOKINGX führen.
+              Die Tour erklärt Dashboard, Reservierungen, Pension, Personal und Analytics.
+            </p>
+            <button
+              type="button"
+              onClick={resetOnboardingTour}
+              className="px-4 py-2 bg-bavaria-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>Tour neu starten</span>
+            </button>
+          </div>
+
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-800 mb-2">Tastenkombinationen</h4>
+            <p className="text-sm text-gray-600 mb-2">
+              Nutzen Sie Tastenkombinationen für schnellere Navigation:
+            </p>
+            <div className="text-xs text-gray-600 space-y-1">
+              <div><kbd className="px-2 py-1 bg-white border rounded">?</kbd> - Alle Shortcuts anzeigen</div>
+              <div><kbd className="px-2 py-1 bg-white border rounded">Ctrl+D</kbd> - Dashboard</div>
+              <div><kbd className="px-2 py-1 bg-white border rounded">Ctrl+R</kbd> - Reservierungen</div>
+              <div><kbd className="px-2 py-1 bg-white border rounded">Ctrl+P</kbd> - Pension</div>
+              <div><kbd className="px-2 py-1 bg-white border rounded">Ctrl+S</kbd> - Personal</div>
+              <div><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Shift+T</kbd> - Tour neu starten</div>
+            </div>
+          </div>
         </div>
       </div>
 
