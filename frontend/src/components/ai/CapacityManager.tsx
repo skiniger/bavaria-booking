@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@antml:parameter>
-<parameter name="content">import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, TrendingUp, AlertTriangle, CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { capacityRecommendationsAPI, areasAPI, analyticsAPI } from '../../services/api';
