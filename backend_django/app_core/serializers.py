@@ -1,11 +1,28 @@
 from rest_framework import serializers
-from .models import Area, Table, Guest, Reservation
+from .models import (
+    Area, Table, Guest, Reservation, TableCombination,
+    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings
+)
 from django.utils import timezone
 
 class AreaSerializer(serializers.ModelSerializer):
+    """Serializer für Servicebereiche"""
+    tables_count = serializers.SerializerMethodField()
+    current_capacity = serializers.SerializerMethodField()
+
     class Meta:
         model = Area
-        fields = ['id', 'name', 'description', 'is_active', 'created_at', 'updated_at']
+        fields = '__all__'
+
+    def get_tables_count(self, obj):
+        return obj.tables.count()
+
+    def get_current_capacity(self, obj):
+        # Berechne verfügbare Kapazität basierend auf belegten Tischen
+        occupied_capacity = sum([
+            table.capacity for table in obj.tables.filter(status__in=['occupied', 'reserved'])
+        ])
+        return obj.total_capacity - occupied_capacity
 
 class TableSerializer(serializers.ModelSerializer):
     area_name = serializers.CharField(source='area.name', read_only=True)
@@ -130,3 +147,111 @@ class ReservationSerializer(serializers.ModelSerializer):
                         {"table": f"Tisch {table.table_number} ist im gewünschten Zeitraum ({reservation_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) bereits belegt."}
                     )
         return data
+
+
+class TableCombinationSerializer(serializers.ModelSerializer):
+    """Serializer für Tischkombinationen"""
+    tables_detail = TableSerializer(source='tables', many=True, read_only=True)
+
+    class Meta:
+        model = TableCombination
+        fields = '__all__'
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    """Serializer für Mitarbeiter"""
+    total_hours_this_month = serializers.SerializerMethodField()
+    is_checked_in = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Employee
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'employee_number', 'role', 'phone', 'is_active_employee',
+            'can_simultaneous_login', 'last_check_in', 'last_check_out',
+            'total_hours_this_month', 'is_checked_in', 'date_joined'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def get_total_hours_this_month(self, obj):
+        now = timezone.now()
+        from datetime import datetime
+        month_start = datetime(now.year, now.month, 1, tzinfo=now.tzinfo)
+        entries = obj.time_entries.filter(check_in__gte=month_start)
+        total = sum([entry.total_hours or 0 for entry in entries])
+        return float(total)
+
+    def get_is_checked_in(self, obj):
+        latest_entry = obj.time_entries.order_by('-check_in').first()
+        if latest_entry and not latest_entry.check_out:
+            return True
+        return False
+
+
+class TimeTrackingSerializer(serializers.ModelSerializer):
+    """Serializer für Zeiterfassung"""
+    employee_name = serializers.SerializerMethodField()
+    employee_detail = EmployeeSerializer(source='employee', read_only=True)
+
+    class Meta:
+        model = TimeTracking
+        fields = '__all__'
+
+    def get_employee_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}"
+
+
+class PensionGuestSerializer(serializers.ModelSerializer):
+    """Serializer für Pensionsgäste"""
+    full_name = serializers.SerializerMethodField()
+    full_address = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PensionGuest
+        fields = '__all__'
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+
+    def get_full_address(self, obj):
+        return f"{obj.street} {obj.house_number}, {obj.postal_code} {obj.city}, {obj.country}"
+
+
+class RegistrationFormSerializer(serializers.ModelSerializer):
+    """Serializer für Meldescheine (BMG-konform)"""
+    guest_detail = PensionGuestSerializer(source='guest', read_only=True)
+    guest_name = serializers.SerializerMethodField()
+    nights = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RegistrationForm
+        fields = '__all__'
+
+    def get_guest_name(self, obj):
+        return f"{obj.guest.first_name} {obj.guest.last_name}"
+
+    def get_nights(self, obj):
+        return (obj.departure_date - obj.arrival_date).days
+
+
+class SystemSettingsSerializer(serializers.ModelSerializer):
+    """Serializer für Systemeinstellungen"""
+
+    class Meta:
+        model = SystemSettings
+        fields = '__all__'
+
+
+# Dashboard-spezifische Serializers
+class DashboardStatsSerializer(serializers.Serializer):
+    """Dashboard Statistiken"""
+    total_tables = serializers.IntegerField()
+    available_tables = serializers.IntegerField()
+    occupied_tables = serializers.IntegerField()
+    reserved_tables = serializers.IntegerField()
+    today_reservations = serializers.IntegerField()
+    today_checkins = serializers.IntegerField()
+    active_employees = serializers.IntegerField()
+    current_occupancy_rate = serializers.FloatField()
