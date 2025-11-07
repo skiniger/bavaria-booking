@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Area, Table, Reservation, Employee, SystemSettings } from '../types';
 
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface Toast {
+  id: string;
+  type: ToastType;
+  message: string;
+  duration?: number;
+}
+
 interface AppState {
   // UI State
   currentArea: Area | null;
@@ -33,6 +42,11 @@ interface AppState {
   // App State
   isOnline: boolean;
   setIsOnline: (online: boolean) => void;
+
+  // Toast Notifications
+  toasts: Toast[];
+  addToast: (type: ToastType, message: string, duration?: number) => void;
+  removeToast: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -69,6 +83,27 @@ export const useStore = create<AppState>()(
       // App State
       isOnline: navigator.onLine,
       setIsOnline: (online) => set({ isOnline: online }),
+
+      // Toast Notifications
+      toasts: [],
+      addToast: (type, message, duration = 5000) => {
+        const id = Math.random().toString(36).substring(2, 9);
+        set((state) => ({
+          toasts: [...state.toasts, { id, type, message, duration }],
+        }));
+        // Auto-remove toast after duration
+        if (duration > 0) {
+          setTimeout(() => {
+            set((state) => ({
+              toasts: state.toasts.filter((t) => t.id !== id),
+            }));
+          }, duration);
+        }
+      },
+      removeToast: (id) =>
+        set((state) => ({
+          toasts: state.toasts.filter((t) => t.id !== id),
+        })),
     }),
     {
       name: 'bavaria-booking-storage',

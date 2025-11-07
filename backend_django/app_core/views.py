@@ -3,17 +3,30 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db import IntegrityError, models
 from django.utils import timezone
+from django.http import HttpResponse
 from datetime import datetime, timedelta
 
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
-    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings
+    Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
+    OpeningHours, SpecialOpeningHours,
+    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation
 )
 from .serializers import (
     AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer,
     TableCombinationSerializer, EmployeeSerializer, TimeTrackingSerializer,
     PensionGuestSerializer, RegistrationFormSerializer, SystemSettingsSerializer,
-    DashboardStatsSerializer
+    OpeningHoursSerializer, SpecialOpeningHoursSerializer,
+    DashboardStatsSerializer,
+    ChatConversationSerializer, ChatMessageSerializer,
+    AnalyticsSnapshotSerializer, CapacityRecommendationSerializer,
+    OccupancyTrendSerializer, RevenueAnalyticsSerializer, PredictiveInsightSerializer
+)
+from . import ai_service
+from .utils.pdf_exports import ReservationPDFExporter, RegistrationFormPDFExporter
+from .utils.csv_exports import (
+    TimeTrackingCSVExporter, GuestCSVExporter,
+    PensionGuestCSVExporter, ReservationCSVExporter
 )
 
 class AreaViewSet(viewsets.ModelViewSet):
@@ -79,6 +92,23 @@ class GuestViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Gäste als CSV.
+        Beispiel: GET /api/guests/export-csv/
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = GuestCSVExporter()
+        csv_buffer = exporter.generate_guests_csv(queryset, include_gdpr=True)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"gaeste_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 class ReservationViewSet(viewsets.ModelViewSet):
     """
@@ -128,7 +158,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             reservation.status = 'confirmed'
             reservation.save()
             return Response({'status': 'Reservierung bestätigt'}, status=status.HTTP_200_OK)
-        return Response({'status': 'Reservierung konnte nicht bestätigt werden (Status ist nicht 'pending_confirmation')'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': 'Reservierung konnte nicht bestätigt werden (Status ist nicht "pending_confirmation")'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel_reservation(self, request, pk=None):
@@ -191,17 +221,22 @@ class ReservationViewSet(viewsets.ModelViewSet):
         for table in candidate_tables:
             end_time = reservation_time + timezone.timedelta(minutes=duration_minutes)
 
-            overlapping = Reservation.objects.filter(
+            # Suche nach überlappenden Reservierungen
+            overlapping_reservations = Reservation.objects.filter(
                 table=table,
                 status__in=['confirmed', 'pending_confirmation'],
-                reservation_time__lt=end_time, # Andere Reservierung startet vor Ende dieser
-            ).exclude( # Filter, sodass auch die Endzeit der anderen Reservierung beachtet wird
-                reservation_time__gte=end_time # Andere Reservierung startet nach oder genau zum Ende dieser
-            ).filter( # Andere Reservierung endet nach Start dieser
-                models.ExpressionWrapper(models.F('reservation_time') + models.ExpressionWrapper(models.F('duration_minutes') * timezone.timedelta(minutes=1), output_field=models.DateTimeField()), output_field=models.DateTimeField())__gt=reservation_time
+                reservation_time__lt=end_time,  # Andere Reservierung startet vor Ende dieser
             )
 
-            if not overlapping.exists():
+            # Prüfe manuell, ob Endzeit der anderen Reservierung nach Start dieser liegt
+            has_overlap = False
+            for res in overlapping_reservations:
+                other_end_time = res.reservation_time + timezone.timedelta(minutes=res.duration_minutes)
+                if other_end_time > reservation_time:  # Andere Reservierung endet nach Start dieser
+                    has_overlap = True
+                    break
+
+            if not has_overlap:
                 available_tables.append(TableSerializer(table).data)
 
         if table_id: # Antwort für einen spezifischen Tisch
@@ -212,6 +247,102 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 return Response({"table_id": table_id, "available": False, "reason": "Tisch ist im gewünschten Zeitraum belegt oder nicht reservierbar."})
         else: # Antwort für eine allgemeine Anfrage
             return Response({"requested_time": reservation_time, "duration": duration_minutes, "num_guests": num_guests, "available_tables": available_tables})
+
+    @action(detail=True, methods=['get'], url_path='export-pdf')
+    def export_single_pdf(self, request, pk=None):
+        """
+        Exportiert eine einzelne Reservierung als PDF.
+        Beispiel: GET /api/reservations/{id}/export-pdf/
+        """
+        reservation = self.get_object()
+        exporter = ReservationPDFExporter()
+        pdf_buffer = exporter.generate_single_reservation(reservation)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"reservierung_{reservation.reservation_id or reservation.id}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-pdf')
+    def export_list_pdf(self, request):
+        """
+        Exportiert mehrere Reservierungen als PDF.
+        Parameter: date_from, date_to (optional)
+        Beispiel: GET /api/reservations/export-pdf/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Filter by date range if provided
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__gte=date_from)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__lte=date_to)
+            except ValueError:
+                pass
+
+        # Limit to reasonable number
+        queryset = queryset[:200]
+
+        exporter = ReservationPDFExporter()
+        pdf_buffer = exporter.generate_reservation_list(queryset, date_from, date_to)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"reservierungen_{datetime.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Reservierungen als CSV.
+        Parameter: date_from, date_to (optional)
+        Beispiel: GET /api/reservations/export-csv/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Filter by date range if provided
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__gte=date_from)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(date__lte=date_to)
+            except ValueError:
+                pass
+
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = ReservationCSVExporter()
+        csv_buffer = exporter.generate_reservations_csv(queryset, date_from, date_to)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"reservierungen_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class TableCombinationViewSet(viewsets.ModelViewSet):
@@ -290,6 +421,44 @@ class TimeTrackingViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Zeiterfassung als CSV.
+        Parameter: employee_id, date_from, date_to (optional)
+        Beispiel: GET /api/time-tracking/export-csv/?date_from=2024-01-01&date_to=2024-01-31
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Parse date parameters
+        date_from_str = request.query_params.get('date_from')
+        date_to_str = request.query_params.get('date_to')
+
+        date_from = None
+        date_to = None
+
+        if date_from_str:
+            try:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = TimeTrackingCSVExporter()
+        csv_buffer = exporter.generate_time_tracking_csv(queryset, date_from, date_to)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"zeiterfassung_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 class PensionGuestViewSet(viewsets.ModelViewSet):
     """API Endpunkt für Pensionsgäste"""
@@ -313,6 +482,23 @@ class PensionGuestViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Exportiert Pensionsgäste als CSV.
+        Beispiel: GET /api/pension-guests/export-csv/
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        queryset = queryset[:1000]  # Limit for performance
+
+        exporter = PensionGuestCSVExporter()
+        csv_buffer = exporter.generate_pension_guests_csv(queryset)
+
+        response = HttpResponse(csv_buffer, content_type='text/csv; charset=utf-8')
+        filename = f"pensionsgaeste_{datetime.now().strftime('%Y%m%d')}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class RegistrationFormViewSet(viewsets.ModelViewSet):
@@ -385,6 +571,21 @@ class RegistrationFormViewSet(viewsets.ModelViewSet):
             'message': 'Meldeschein erfolgreich exportiert',
             'export_date': registration.export_date
         })
+
+    @action(detail=True, methods=['get'], url_path='export-pdf')
+    def export_pdf(self, request, pk=None):
+        """
+        Exportiert einen Meldeschein als BMG-konformes PDF.
+        Beispiel: GET /api/registration-forms/{id}/export-pdf/
+        """
+        registration = self.get_object()
+        exporter = RegistrationFormPDFExporter()
+        pdf_buffer = exporter.generate_registration_form(registration)
+
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"meldeschein_{registration.guest.last_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class SystemSettingsViewSet(viewsets.ModelViewSet):
@@ -464,3 +665,424 @@ class DashboardViewSet(viewsets.ViewSet):
             })
 
         return Response(result)
+
+
+
+class OpeningHoursViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Öffnungszeiten.
+    """
+    queryset = OpeningHours.objects.select_related("area").all().order_by("area", "weekday")
+    serializer_class = OpeningHoursSerializer
+
+    def get_queryset(self):
+        """
+        Optional: Filtern nach Bereich (area_id) via Query Parameter.
+        Beispiel: /api/opening-hours/?area_id=<uuid>
+        """
+        queryset = super().get_queryset()
+        area_id = self.request.query_params.get("area_id")
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        return queryset
+
+
+class SpecialOpeningHoursViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Sonder-Öffnungszeiten (Feiertage, Events).
+    """
+    queryset = SpecialOpeningHours.objects.select_related("area").all().order_by("date")
+    serializer_class = SpecialOpeningHoursSerializer
+
+    def get_queryset(self):
+        """
+        Optional: Filtern nach Bereich (area_id) oder Datumsbereich via Query Parameter.
+        Beispiel: /api/special-opening-hours/?area_id=<uuid>&from_date=2024-01-01&to_date=2024-12-31
+        """
+        queryset = super().get_queryset()
+        area_id = self.request.query_params.get("area_id")
+        from_date = self.request.query_params.get("from_date")
+        to_date = self.request.query_params.get("to_date")
+
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        if from_date:
+            queryset = queryset.filter(date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(date__lte=to_date)
+
+        return queryset
+
+
+# ============================================================================
+# PHASE 3: KI & ANALYTICS VIEWSETS
+# ============================================================================
+
+class ChatConversationViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für MeitiAI Chat-Konversationen
+    """
+    queryset = ChatConversation.objects.all().order_by('-updated_at')
+    serializer_class = ChatConversationSerializer
+
+    def get_queryset(self):
+        """Filter Konversationen nach Mitarbeiter"""
+        queryset = super().get_queryset()
+        employee_id = self.request.query_params.get('employee_id')
+        is_active = self.request.query_params.get('is_active')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+        return queryset
+
+    @action(detail=True, methods=['post'], url_path='send-message')
+    def send_message(self, request, pk=None):
+        """
+        Sendet eine Nachricht an den Chat und erhält KI-Antwort
+
+        POST /api/chat-conversations/{id}/send-message/
+        Body: { "content": "Wie ist die Auslastung?" }
+        """
+        conversation = self.get_object()
+        user_message_content = request.data.get('content', '')
+
+        if not user_message_content:
+            return Response(
+                {'error': 'Nachrichteninhalt darf nicht leer sein'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Benutzer-Nachricht speichern
+        user_message = ChatMessage.objects.create(
+            conversation=conversation,
+            role='user',
+            content=user_message_content
+        )
+
+        # Konversationshistorie für KI-Kontext
+        conversation_history = [
+            {
+                'role': msg.role,
+                'content': msg.content
+            }
+            for msg in conversation.messages.all()
+        ]
+
+        # KI-Antwort generieren
+        ai_response = ai_service.generate_chat_response(
+            conversation_history=conversation_history,
+            user_message=user_message_content
+        )
+
+        # KI-Antwort speichern
+        assistant_message = ChatMessage.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=ai_response
+        )
+
+        # Konversation aktualisieren
+        conversation.updated_at = timezone.now()
+        conversation.save()
+
+        # Serialisierte Antwort
+        return Response({
+            'user_message': ChatMessageSerializer(user_message).data,
+            'assistant_message': ChatMessageSerializer(assistant_message).data
+        }, status=status.HTTP_201_CREATED)
+
+
+class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API Endpunkt für Chat-Nachrichten (Read-only)
+    Nachrichten werden über ChatConversation.send_message erstellt
+    """
+    queryset = ChatMessage.objects.all().order_by('created_at')
+    serializer_class = ChatMessageSerializer
+
+    def get_queryset(self):
+        """Filter Nachrichten nach Konversation"""
+        queryset = super().get_queryset()
+        conversation_id = self.request.query_params.get('conversation_id')
+
+        if conversation_id:
+            queryset = queryset.filter(conversation_id=conversation_id)
+
+        return queryset
+
+
+class AnalyticsSnapshotViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Analytics-Snapshots
+    """
+    queryset = AnalyticsSnapshot.objects.all().order_by('-snapshot_date')
+    serializer_class = AnalyticsSnapshotSerializer
+
+    def get_queryset(self):
+        """Filter nach Datumsbereich"""
+        queryset = super().get_queryset()
+        from_date = self.request.query_params.get('from_date')
+        to_date = self.request.query_params.get('to_date')
+
+        if from_date:
+            queryset = queryset.filter(snapshot_date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(snapshot_date__lte=to_date)
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='generate-today')
+    def generate_today(self, request):
+        """
+        Generiert Analytics-Snapshot für heute
+
+        POST /api/analytics-snapshots/generate-today/
+        """
+        today = timezone.now().date()
+
+        # Prüfen, ob bereits Snapshot existiert
+        existing = AnalyticsSnapshot.objects.filter(snapshot_date=today).first()
+        if existing:
+            return Response(
+                {'message': 'Snapshot für heute existiert bereits', 'data': AnalyticsSnapshotSerializer(existing).data},
+                status=status.HTTP_200_OK
+            )
+
+        # Statistiken berechnen
+        today_reservations = Reservation.objects.filter(reservation_time__date=today)
+
+        total_reservations = today_reservations.count()
+        confirmed = today_reservations.filter(status='confirmed').count()
+        cancelled = today_reservations.filter(
+            status__in=['cancelled_by_guest', 'cancelled_by_restaurant']
+        ).count()
+        no_shows = today_reservations.filter(status='no_show').count()
+
+        total_guests = sum([r.number_of_guests for r in today_reservations])
+        avg_party_size = total_guests / total_reservations if total_reservations > 0 else 0
+
+        # Auslastung berechnen (vereinfacht)
+        all_tables = Table.objects.filter(is_reservable=True)
+        total_capacity = sum([t.capacity for t in all_tables])
+        occupancy_rate = (total_guests / total_capacity * 100) if total_capacity > 0 else 0
+
+        # Snapshot erstellen
+        snapshot_data = {
+            'total_reservations': total_reservations,
+            'confirmed_reservations': confirmed,
+            'cancelled_reservations': cancelled,
+            'no_show_count': no_shows,
+            'average_occupancy_rate': round(occupancy_rate, 2),
+            'total_guests_served': total_guests,
+            'average_party_size': round(avg_party_size, 2),
+            'total_revenue': 0,  # TODO: Integration mit POS-System
+        }
+
+        # KI-Insights generieren
+        insights = ai_service.generate_analytics_insights(snapshot_data)
+        snapshot_data['ai_insights'] = insights
+
+        snapshot = AnalyticsSnapshot.objects.create(
+            snapshot_date=today,
+            **snapshot_data
+        )
+
+        return Response(
+            AnalyticsSnapshotSerializer(snapshot).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class CapacityRecommendationViewSet(viewsets.ModelViewSet):
+    """
+    API Endpunkt für Kapazitäts-Empfehlungen
+    """
+    queryset = CapacityRecommendation.objects.select_related('area').all().order_by('-date', '-time_slot')
+    serializer_class = CapacityRecommendationSerializer
+
+    def get_queryset(self):
+        """Filter nach Datum, Bereich, angewendet"""
+        queryset = super().get_queryset()
+        date = self.request.query_params.get('date')
+        area_id = self.request.query_params.get('area_id')
+        is_applied = self.request.query_params.get('is_applied')
+
+        if date:
+            queryset = queryset.filter(date=date)
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+        if is_applied is not None:
+            queryset = queryset.filter(is_applied=is_applied.lower() == 'true')
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='generate')
+    def generate_recommendations(self, request):
+        """
+        Generiert Empfehlungen für einen Zeitraum
+
+        POST /api/capacity-recommendations/generate/
+        Body: { "date": "2025-01-10", "area_id": "uuid" }
+        """
+        target_date = request.data.get('date')
+        area_id = request.data.get('area_id')
+
+        if not target_date or not area_id:
+            return Response(
+                {'error': 'Datum und Bereich sind erforderlich'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Parse Datum
+        try:
+            target_date_obj = datetime.strptime(target_date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Ungültiges Datumsformat (YYYY-MM-DD)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Area validieren
+        try:
+            area = Area.objects.get(id=area_id)
+        except Area.DoesNotExist:
+            return Response(
+                {'error': 'Bereich nicht gefunden'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Empfehlungen für verschiedene Zeitslots generieren
+        time_slots = ['12:00:00', '14:00:00', '18:00:00', '20:00:00']
+        recommendations = []
+
+        for time_slot in time_slots:
+            # Prüfen ob bereits existiert
+            existing = CapacityRecommendation.objects.filter(
+                date=target_date_obj,
+                time_slot=time_slot,
+                area=area
+            ).first()
+
+            if existing:
+                recommendations.append(existing)
+                continue
+
+            # Vorhersage generieren
+            prediction = ai_service.predict_occupancy(
+                area_id=str(area_id),
+                target_date=target_date_obj,
+                target_time=time_slot
+            )
+
+            # Empfehlung generieren
+            recommendation_data = ai_service.generate_capacity_recommendation(
+                area_id=str(area_id),
+                predicted_occupancy=prediction['predicted_occupancy'],
+                date=target_date_obj,
+                time_slot=time_slot
+            )
+
+            # Speichern
+            recommendation = CapacityRecommendation.objects.create(
+                date=target_date_obj,
+                time_slot=time_slot,
+                area=area,
+                predicted_occupancy=prediction['predicted_occupancy'],
+                confidence_score=prediction['confidence_score'],
+                recommendation_type=recommendation_data['recommendation_type'],
+                recommendation_text=recommendation_data['recommendation_text'],
+                based_on_data=prediction['factors']
+            )
+            recommendations.append(recommendation)
+
+        return Response(
+            CapacityRecommendationSerializer(recommendations, many=True).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['post'], url_path='apply')
+    def apply_recommendation(self, request, pk=None):
+        """
+        Markiert Empfehlung als angewendet
+
+        POST /api/capacity-recommendations/{id}/apply/
+        """
+        recommendation = self.get_object()
+        recommendation.is_applied = True
+        recommendation.applied_at = timezone.now()
+        recommendation.save()
+
+        return Response(
+            CapacityRecommendationSerializer(recommendation).data,
+            status=status.HTTP_200_OK
+        )
+
+
+class AnalyticsAPIViewSet(viewsets.ViewSet):
+    """
+    Zusätzliche Analytics-Endpunkte
+    """
+
+    @action(detail=False, methods=['get'], url_path='occupancy-trends')
+    def occupancy_trends(self, request):
+        """
+        Auslastungstrends über die letzten N Tage
+
+        GET /api/analytics/occupancy-trends/?days=7
+        """
+        days = int(request.query_params.get('days', 7))
+        trends = ai_service.calculate_occupancy_trends(days=days)
+
+        return Response(
+            OccupancyTrendSerializer(trends, many=True).data,
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['get'], url_path='predictive-insights')
+    def predictive_insights(self, request):
+        """
+        KI-generierte Vorhersagen und Empfehlungen
+
+        GET /api/analytics/predictive-insights/?days_ahead=3
+        """
+        days_ahead = int(request.query_params.get('days_ahead', 3))
+        insights = []
+
+        today = timezone.now().date()
+        areas = Area.objects.filter(is_active=True)
+
+        for i in range(1, days_ahead + 1):
+            target_date = today + timedelta(days=i)
+
+            for area in areas:
+                # Vorhersage für 19:00 Uhr (Hauptzeit)
+                prediction = ai_service.predict_occupancy(
+                    area_id=str(area.id),
+                    target_date=target_date,
+                    target_time='19:00:00'
+                )
+
+                recommendation_data = ai_service.generate_capacity_recommendation(
+                    area_id=str(area.id),
+                    predicted_occupancy=prediction['predicted_occupancy'],
+                    date=target_date,
+                    time_slot='19:00:00'
+                )
+
+                insights.append({
+                    'insight_type': 'occupancy',
+                    'date': target_date,
+                    'area_name': area.name,
+                    'predicted_value': prediction['predicted_occupancy'],
+                    'confidence': prediction['confidence_score'],
+                    'recommendation': recommendation_data['recommendation_text']
+                })
+
+        return Response(
+            PredictiveInsightSerializer(insights, many=True).data,
+            status=status.HTTP_200_OK
+        )
+

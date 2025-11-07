@@ -2,7 +2,10 @@ import axios from 'axios';
 import type {
   Area, Table, TableCombination, Guest, Reservation,
   Employee, TimeTracking, PensionGuest, RegistrationForm,
-  SystemSettings, DashboardStats, AreaCapacity
+  SystemSettings, OpeningHours, SpecialOpeningHours,
+  DashboardStats, AreaCapacity,
+  ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation,
+  OccupancyTrend, PredictiveInsight
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -59,6 +62,9 @@ export const guestsAPI = {
   create: (data: Partial<Guest>) => api.post<Guest>('/guests/', data),
   update: (id: string, data: Partial<Guest>) => api.patch<Guest>(`/guests/${id}/`, data),
   delete: (id: string) => api.delete(`/guests/${id}/`),
+  exportCSV: () => {
+    window.open(`${API_BASE_URL}/guests/export-csv/`, '_blank');
+  },
 };
 
 // ===== RESERVATIONS =====
@@ -78,6 +84,17 @@ export const reservationsAPI = {
     duration: number;
     guests: number;
   }) => api.get('/reservations/check-availability/', { params }),
+  exportSinglePDF: (id: string) => {
+    window.open(`${API_BASE_URL}/reservations/${id}/export-pdf/`, '_blank');
+  },
+  exportListPDF: (params?: { date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/reservations/export-pdf/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
+  exportCSV: (params?: { date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/reservations/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
 };
 
 // ===== EMPLOYEES =====
@@ -99,6 +116,10 @@ export const timeTrackingAPI = {
   create: (data: Partial<TimeTracking>) => api.post<TimeTracking>('/time-tracking/', data),
   update: (id: string, data: Partial<TimeTracking>) => api.patch<TimeTracking>(`/time-tracking/${id}/`, data),
   delete: (id: string) => api.delete(`/time-tracking/${id}/`),
+  exportCSV: (params?: { employee_id?: string; date_from?: string; date_to?: string }) => {
+    const queryString = new URLSearchParams(params as any).toString();
+    window.open(`${API_BASE_URL}/time-tracking/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
+  },
 };
 
 // ===== PENSION GUESTS =====
@@ -110,6 +131,9 @@ export const pensionGuestsAPI = {
   create: (data: Partial<PensionGuest>) => api.post<PensionGuest>('/pension-guests/', data),
   update: (id: string, data: Partial<PensionGuest>) => api.patch<PensionGuest>(`/pension-guests/${id}/`, data),
   delete: (id: string) => api.delete(`/pension-guests/${id}/`),
+  exportCSV: () => {
+    window.open(`${API_BASE_URL}/pension-guests/export-csv/`, '_blank');
+  },
 };
 
 // ===== REGISTRATION FORMS =====
@@ -123,6 +147,9 @@ export const registrationFormsAPI = {
   checkIn: (id: string) => api.post<RegistrationForm>(`/registration-forms/${id}/check-in/`),
   checkOut: (id: string) => api.post<RegistrationForm>(`/registration-forms/${id}/check-out/`),
   exportToCity: (id: string) => api.post(`/registration-forms/${id}/export/`),
+  exportPDF: (id: string) => {
+    window.open(`${API_BASE_URL}/registration-forms/${id}/export-pdf/`, '_blank');
+  },
 };
 
 // ===== SYSTEM SETTINGS =====
@@ -132,10 +159,87 @@ export const systemSettingsAPI = {
   update: (id: string, data: Partial<SystemSettings>) => api.patch<SystemSettings>(`/system-settings/${id}/`, data),
 };
 
+// ===== OPENING HOURS =====
+export const openingHoursAPI = {
+  getAll: (areaId?: string) => api.get<OpeningHours[]>('/opening-hours/', { params: { area_id: areaId } }),
+  getById: (id: string) => api.get<OpeningHours>(`/opening-hours/${id}/`),
+  create: (data: Partial<OpeningHours>) => api.post<OpeningHours>('/opening-hours/', data),
+  update: (id: string, data: Partial<OpeningHours>) => api.patch<OpeningHours>(`/opening-hours/${id}/`, data),
+  delete: (id: string) => api.delete(`/opening-hours/${id}/`),
+};
+
+// ===== SPECIAL OPENING HOURS =====
+export const specialOpeningHoursAPI = {
+  getAll: (params?: { area_id?: string; from_date?: string; to_date?: string }) =>
+    api.get<SpecialOpeningHours[]>('/special-opening-hours/', { params }),
+  getById: (id: string) => api.get<SpecialOpeningHours>(`/special-opening-hours/${id}/`),
+  create: (data: Partial<SpecialOpeningHours>) => api.post<SpecialOpeningHours>('/special-opening-hours/', data),
+  update: (id: string, data: Partial<SpecialOpeningHours>) => api.patch<SpecialOpeningHours>(`/special-opening-hours/${id}/`, data),
+  delete: (id: string) => api.delete(`/special-opening-hours/${id}/`),
+};
+
 // ===== DASHBOARD =====
 export const dashboardAPI = {
   getStats: () => api.get<DashboardStats>('/dashboard/stats/'),
   getCapacityByArea: () => api.get<AreaCapacity[]>('/dashboard/capacity-by-area/'),
+};
+
+// ============================================================================
+// PHASE 3: KI & ANALYTICS API
+// ============================================================================
+
+// ===== CHAT CONVERSATIONS (MeitiAI) =====
+export const chatConversationsAPI = {
+  getAll: (params?: { employee_id?: string; is_active?: boolean }) =>
+    api.get<ChatConversation[]>('/chat-conversations/', { params }),
+  getById: (id: string) => api.get<ChatConversation>(`/chat-conversations/${id}/`),
+  create: (data: Partial<ChatConversation>) => api.post<ChatConversation>('/chat-conversations/', data),
+  update: (id: string, data: Partial<ChatConversation>) => api.patch<ChatConversation>(`/chat-conversations/${id}/`, data),
+  delete: (id: string) => api.delete(`/chat-conversations/${id}/`),
+  sendMessage: (id: string, content: string) =>
+    api.post<{ user_message: ChatMessage; assistant_message: ChatMessage }>(
+      `/chat-conversations/${id}/send-message/`,
+      { content }
+    ),
+};
+
+// ===== CHAT MESSAGES =====
+export const chatMessagesAPI = {
+  getAll: (conversationId?: string) =>
+    api.get<ChatMessage[]>('/chat-messages/', { params: { conversation_id: conversationId } }),
+  getById: (id: string) => api.get<ChatMessage>(`/chat-messages/${id}/`),
+};
+
+// ===== ANALYTICS SNAPSHOTS =====
+export const analyticsSnapshotsAPI = {
+  getAll: (params?: { from_date?: string; to_date?: string }) =>
+    api.get<AnalyticsSnapshot[]>('/analytics-snapshots/', { params }),
+  getById: (id: string) => api.get<AnalyticsSnapshot>(`/analytics-snapshots/${id}/`),
+  create: (data: Partial<AnalyticsSnapshot>) => api.post<AnalyticsSnapshot>('/analytics-snapshots/', data),
+  update: (id: string, data: Partial<AnalyticsSnapshot>) => api.patch<AnalyticsSnapshot>(`/analytics-snapshots/${id}/`, data),
+  delete: (id: string) => api.delete(`/analytics-snapshots/${id}/`),
+  generateToday: () => api.post<AnalyticsSnapshot>('/analytics-snapshots/generate-today/'),
+};
+
+// ===== CAPACITY RECOMMENDATIONS =====
+export const capacityRecommendationsAPI = {
+  getAll: (params?: { date?: string; area_id?: string; is_applied?: boolean }) =>
+    api.get<CapacityRecommendation[]>('/capacity-recommendations/', { params }),
+  getById: (id: string) => api.get<CapacityRecommendation>(`/capacity-recommendations/${id}/`),
+  create: (data: Partial<CapacityRecommendation>) => api.post<CapacityRecommendation>('/capacity-recommendations/', data),
+  update: (id: string, data: Partial<CapacityRecommendation>) => api.patch<CapacityRecommendation>(`/capacity-recommendations/${id}/`, data),
+  delete: (id: string) => api.delete(`/capacity-recommendations/${id}/`),
+  generate: (date: string, area_id: string) =>
+    api.post<CapacityRecommendation[]>('/capacity-recommendations/generate/', { date, area_id }),
+  apply: (id: string) => api.post<CapacityRecommendation>(`/capacity-recommendations/${id}/apply/`),
+};
+
+// ===== ANALYTICS API =====
+export const analyticsAPI = {
+  getOccupancyTrends: (days?: number) =>
+    api.get<OccupancyTrend[]>('/analytics/occupancy-trends/', { params: { days } }),
+  getPredictiveInsights: (days_ahead?: number) =>
+    api.get<PredictiveInsight[]>('/analytics/predictive-insights/', { params: { days_ahead } }),
 };
 
 export default api;
