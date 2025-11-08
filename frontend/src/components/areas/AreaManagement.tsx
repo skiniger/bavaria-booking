@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Plus, Edit, Trash2, Grid, Eye, EyeOff } from 'lucide-react';
-import { api } from '../../services/api';
+import { areasAPI } from '../../services/api';
 import { Area } from '../../types';
 
 interface AreaManagementProps {
@@ -21,12 +21,18 @@ export const AreaManagement: React.FC<AreaManagementProps> = ({
   // Fetch areas
   const { data: areas = [], isLoading } = useQuery<Area[]>({
     queryKey: ['areas'],
-    queryFn: api.areas.getAll,
+    queryFn: async () => {
+      const response = await areasAPI.getAll();
+      return response.data;
+    },
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.areas.delete(id),
+    mutationFn: async (id: string) => {
+      const response = await areasAPI.delete(id);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
@@ -35,8 +41,10 @@ export const AreaManagement: React.FC<AreaManagementProps> = ({
 
   // Toggle active mutation
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.areas.update(id, { is_active }),
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const response = await areasAPI.update(id, { is_active });
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
     },

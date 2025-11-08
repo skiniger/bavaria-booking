@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, LogIn, LogOut, X, Coffee } from 'lucide-react';
-import { api } from '../../services/api';
+import { timeTrackingAPI, employeesAPI } from '../../services/api';
 import { Employee, TimeTracking } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -20,13 +20,19 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
   // Fetch employees
   const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: api.employees.getAll,
+    queryFn: async () => {
+      const response = await employeesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Fetch current time trackings
   const { data: timeTrackings = [] } = useQuery<TimeTracking[]>({
     queryKey: ['timeTrackings'],
-    queryFn: api.timeTracking.getAll,
+    queryFn: async () => {
+      const response = await timeTrackingAPI.getAll();
+      return response.data;
+    },
   });
 
   // Check if employee is currently clocked in
@@ -36,7 +42,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
 
   // Clock in mutation
   const clockInMutation = useMutation({
-    mutationFn: (data: Partial<TimeTracking>) => api.timeTracking.create(data),
+    mutationFn: (data: Partial<TimeTracking>) => timeTrackingAPI.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeTrackings'] });
       setNotes('');
@@ -47,7 +53,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
   // Clock out mutation
   const clockOutMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<TimeTracking> }) =>
-      api.timeTracking.update(id, data),
+      timeTrackingAPI.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeTrackings'] });
       setBreakMinutes(0);
