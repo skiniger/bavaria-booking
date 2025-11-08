@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, Users, Calendar, TrendingUp } from 'lucide-react';
-import { api } from '../../services/api';
+import { timeTrackingAPI, employeesAPI } from '../../services/api';
 import { TimeTracking, Employee } from '../../types';
 import { format, differenceInHours, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -14,13 +14,19 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
   // Fetch current time trackings
   const { data: timeTrackings = [], isLoading: trackingsLoading } = useQuery<TimeTracking[]>({
     queryKey: ['timeTrackings'],
-    queryFn: api.timeTracking.getAll,
+    queryFn: async () => {
+      const response = await timeTrackingAPI.getAll();
+      return response.data;
+    },
   });
 
   // Fetch employees
   const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: api.employees.getAll,
+    queryFn: async () => {
+      const response = await employeesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Calculate statistics

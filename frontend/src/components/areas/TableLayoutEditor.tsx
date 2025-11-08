@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Grid, ZoomIn, ZoomOut, Move, Plus, Save, RotateCw, Trash2 } from 'lucide-react';
-import { api } from '../../services/api';
+import { areasAPI, tablesAPI } from '../../services/api';
 import { Area, Table } from '../../types';
 
 interface TableLayoutEditorProps {
@@ -28,21 +28,29 @@ export const TableLayoutEditor: React.FC<TableLayoutEditorProps> = ({ areaId, on
   // Fetch area
   const { data: area } = useQuery<Area>({
     queryKey: ['areas', areaId],
-    queryFn: () => api.areas.getById(areaId),
+    queryFn: async () => {
+      const response = await areasAPI.getById(areaId);
+      return response.data;
+    },
     enabled: !!areaId,
   });
 
   // Fetch tables
   const { data: tables = [], isLoading: tablesLoading } = useQuery<Table[]>({
     queryKey: ['tables', areaId],
-    queryFn: () => api.tables.getByArea(areaId),
+    queryFn: async () => {
+      const response = await tablesAPI.getAll(areaId);
+      return response.data;
+    },
     enabled: !!areaId,
   });
 
   // Update table position mutation
   const updateTableMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Table> }) =>
-      api.tables.update(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Table> }) => {
+      const response = await tablesAPI.update(id, data);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
     },
@@ -50,7 +58,10 @@ export const TableLayoutEditor: React.FC<TableLayoutEditorProps> = ({ areaId, on
 
   // Delete table mutation
   const deleteTableMutation = useMutation({
-    mutationFn: (id: string) => api.tables.delete(id),
+    mutationFn: async (id: string) => {
+      const response = await tablesAPI.delete(id);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
       queryClient.invalidateQueries({ queryKey: ['areas'] });

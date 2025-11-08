@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Search, Plus, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
-import { api } from '../../services/api';
+import { employeesAPI } from '../../services/api';
 import { Employee } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -25,12 +25,18 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   // Fetch employees
   const { data: employees = [], isLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: api.employees.getAll,
+    queryFn: async () => {
+      const response = await employeesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.employees.delete(id),
+    mutationFn: async (id: string) => {
+      const response = await employeesAPI.delete(id);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
     },

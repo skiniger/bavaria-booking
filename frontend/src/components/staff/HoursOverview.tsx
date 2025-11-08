@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, Filter, Download, Calendar, Edit } from 'lucide-react';
-import { api } from '../../services/api';
+import { employeesAPI, timeTrackingAPI } from '../../services/api';
 import { TimeTracking, Employee } from '../../types';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -23,13 +23,19 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
   // Fetch employees
   const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: api.employees.getAll,
+    queryFn: async () => {
+      const response = await employeesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Fetch time trackings
   const { data: timeTrackings = [], isLoading: trackingsLoading } = useQuery<TimeTracking[]>({
     queryKey: ['timeTrackings'],
-    queryFn: api.timeTracking.getAll,
+    queryFn: async () => {
+      const response = await timeTrackingAPI.getAll();
+      return response.data;
+    },
   });
 
   // Apply preset filters
