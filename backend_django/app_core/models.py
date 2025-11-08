@@ -357,15 +357,46 @@ class SystemSettings(models.Model):
     company_email = models.EmailField(verbose_name="E-Mail")
     company_website = models.URLField(blank=True, null=True, verbose_name="Website")
     company_logo_url = models.URLField(blank=True, null=True, verbose_name="Logo URL")
+    tax_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="Steuernummer")
+    vat_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="USt-ID")
+
+    # Reservierungs-Einstellungen
+    default_reservation_duration = models.PositiveIntegerField(default=120, verbose_name="Standard Reservierungsdauer (Min)")
+    reservation_lead_time = models.PositiveIntegerField(default=90, verbose_name="Vorlaufzeit für Reservierungen (Tage)")
+    max_guests_per_reservation = models.PositiveIntegerField(default=20, verbose_name="Max. Gäste pro Reservierung")
+
+    # Kurtaxe-Einstellungen
+    tourist_tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=2.50, verbose_name="Kurtaxe pro Nacht")
+    tourist_tax_enabled = models.BooleanField(default=True, verbose_name="Kurtaxe aktiv")
 
     # System-Einstellungen
-    default_reservation_duration = models.PositiveIntegerField(default=120, verbose_name="Standard Reservierungsdauer (Min)")
     auto_logout_hours = models.PositiveIntegerField(default=24, verbose_name="Auto-Logout nach (Stunden)")
-    backup_frequency_hours = models.PositiveIntegerField(default=8, verbose_name="Backup-Frequenz (Stunden)")
-    tourist_tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=2.50, verbose_name="Kurtaxe pro Nacht")
+    timezone = models.CharField(max_length=50, default='Europe/Berlin', verbose_name="Zeitzone")
+    language = models.CharField(max_length=10, default='de', verbose_name="Sprache")
 
-    # Öffnungszeiten
-    opening_hours = models.JSONField(default=dict, verbose_name="Öffnungszeiten")
+    # Backup-Einstellungen
+    backup_frequency_hours = models.PositiveIntegerField(default=8, verbose_name="Backup-Frequenz (Stunden)")
+    last_backup = models.DateTimeField(null=True, blank=True, verbose_name="Letztes Backup")
+
+    # E-Mail-Einstellungen
+    smtp_host = models.CharField(max_length=200, blank=True, null=True, verbose_name="SMTP Server")
+    smtp_port = models.PositiveIntegerField(default=587, verbose_name="SMTP Port")
+    smtp_username = models.CharField(max_length=200, blank=True, null=True, verbose_name="SMTP Benutzername")
+    smtp_password = models.CharField(max_length=200, blank=True, null=True, verbose_name="SMTP Passwort")
+    smtp_use_tls = models.BooleanField(default=True, verbose_name="SMTP TLS verwenden")
+    email_from_address = models.EmailField(blank=True, null=True, verbose_name="Absender E-Mail")
+
+    # DSGVO-Einstellungen
+    gdpr_consent_text = models.TextField(
+        default="Ich stimme der Verarbeitung meiner personenbezogenen Daten gemäß der Datenschutzerklärung zu.",
+        verbose_name="DSGVO-Einwilligungstext"
+    )
+    gdpr_guest_retention_months = models.PositiveIntegerField(default=24, verbose_name="Gäste-Daten Aufbewahrung (Monate)")
+    gdpr_reservation_retention_months = models.PositiveIntegerField(default=12, verbose_name="Reservierungs-Daten Aufbewahrung (Monate)")
+    gdpr_timetracking_retention_years = models.PositiveIntegerField(default=10, verbose_name="Zeiterfassungs-Daten Aufbewahrung (Jahre)")
+
+    # Öffnungszeiten (deprecated - use OpeningHours model instead)
+    opening_hours = models.JSONField(default=dict, verbose_name="Öffnungszeiten", blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -376,3 +407,205 @@ class SystemSettings(models.Model):
     class Meta:
         verbose_name = "Systemeinstellung"
         verbose_name_plural = "Systemeinstellungen"
+
+
+class OpeningHours(models.Model):
+    """Öffnungszeiten pro Servicebereich und Wochentag"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name="opening_hours", verbose_name="Bereich")
+
+    # Wochentag (0 = Montag, 6 = Sonntag)
+    weekday = models.PositiveSmallIntegerField(
+        choices=[
+            (0, 'Montag'),
+            (1, 'Dienstag'),
+            (2, 'Mittwoch'),
+            (3, 'Donnerstag'),
+            (4, 'Freitag'),
+            (5, 'Samstag'),
+            (6, 'Sonntag'),
+        ],
+        verbose_name="Wochentag"
+    )
+
+    is_closed = models.BooleanField(default=False, verbose_name="Geschlossen")
+    open_time = models.TimeField(null=True, blank=True, verbose_name="Öffnungszeit")
+    close_time = models.TimeField(null=True, blank=True, verbose_name="Schließzeit")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        weekday_name = self.get_weekday_display()
+        if self.is_closed:
+            return f"{self.area.name} - {weekday_name}: Geschlossen"
+        return f"{self.area.name} - {weekday_name}: {self.open_time} - {self.close_time}"
+
+    class Meta:
+        verbose_name = "Öffnungszeit"
+        verbose_name_plural = "Öffnungszeiten"
+        unique_together = ('area', 'weekday')
+        ordering = ['area', 'weekday']
+
+
+class SpecialOpeningHours(models.Model):
+    """Sonder-Öffnungszeiten (Feiertage, besondere Events)"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name="special_opening_hours", verbose_name="Bereich")
+
+    date = models.DateField(verbose_name="Datum")
+    description = models.CharField(max_length=200, verbose_name="Beschreibung")
+
+    is_closed = models.BooleanField(default=False, verbose_name="Geschlossen")
+    open_time = models.TimeField(null=True, blank=True, verbose_name="Öffnungszeit")
+    close_time = models.TimeField(null=True, blank=True, verbose_name="Schließzeit")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        if self.is_closed:
+            return f"{self.area.name} - {self.date}: {self.description} (Geschlossen)"
+        return f"{self.area.name} - {self.date}: {self.description} ({self.open_time} - {self.close_time})"
+
+    class Meta:
+        verbose_name = "Sonder-Öffnungszeit"
+        verbose_name_plural = "Sonder-Öffnungszeiten"
+        unique_together = ('area', 'date')
+        ordering = ['date']
+
+
+# ============================================================================
+# PHASE 3: KI & ANALYTICS MODELS
+# ============================================================================
+
+class ChatConversation(models.Model):
+    """MeitiAI Chat-Konversationen"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="chat_conversations", verbose_name="Mitarbeiter")
+    title = models.CharField(max_length=200, verbose_name="Titel", blank=True, null=True)
+    is_active = models.BooleanField(default=True, verbose_name="Aktiv")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        title = self.title or f"Konversation {self.created_at.strftime('%d.%m.%Y %H:%M')}"
+        return f"{self.employee.username} - {title}"
+
+    class Meta:
+        verbose_name = "Chat-Konversation"
+        verbose_name_plural = "Chat-Konversationen"
+        ordering = ['-updated_at']
+
+
+class ChatMessage(models.Model):
+    """Einzelne Chat-Nachrichten"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name="messages", verbose_name="Konversation")
+
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ('user', 'Benutzer'),
+            ('assistant', 'Assistent'),
+            ('system', 'System'),
+        ],
+        verbose_name="Rolle"
+    )
+    content = models.TextField(verbose_name="Nachricht")
+
+    # Optional: Metadata für KI-Kontext
+    metadata = models.JSONField(default=dict, blank=True, verbose_name="Metadaten")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
+        return f"{self.role}: {preview}"
+
+    class Meta:
+        verbose_name = "Chat-Nachricht"
+        verbose_name_plural = "Chat-Nachrichten"
+        ordering = ['created_at']
+
+
+class AnalyticsSnapshot(models.Model):
+    """Tägliche/Wöchentliche Analytics-Snapshots für Trends"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    snapshot_date = models.DateField(verbose_name="Snapshot-Datum", unique=True)
+
+    # Reservierungs-Statistiken
+    total_reservations = models.PositiveIntegerField(default=0, verbose_name="Gesamt Reservierungen")
+    confirmed_reservations = models.PositiveIntegerField(default=0, verbose_name="Bestätigte Reservierungen")
+    cancelled_reservations = models.PositiveIntegerField(default=0, verbose_name="Stornierte Reservierungen")
+    no_show_count = models.PositiveIntegerField(default=0, verbose_name="No-Shows")
+
+    # Auslastungs-Statistiken
+    average_occupancy_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Durchschnittl. Auslastung %")
+    peak_occupancy_time = models.TimeField(null=True, blank=True, verbose_name="Haupt-Auslastungszeit")
+
+    # Gäste-Statistiken
+    total_guests_served = models.PositiveIntegerField(default=0, verbose_name="Gesamt bediente Gäste")
+    average_party_size = models.DecimalField(max_digits=4, decimal_places=2, default=0, verbose_name="Durchschnittl. Gruppengröße")
+
+    # Umsatz (optional)
+    total_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)], verbose_name="Gesamtumsatz")
+
+    # KI-generierte Insights
+    ai_insights = models.JSONField(default=list, blank=True, verbose_name="KI-Insights")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Analytics {self.snapshot_date}"
+
+    class Meta:
+        verbose_name = "Analytics-Snapshot"
+        verbose_name_plural = "Analytics-Snapshots"
+        ordering = ['-snapshot_date']
+
+
+class CapacityRecommendation(models.Model):
+    """KI-generierte Empfehlungen für Kapazitätsoptimierung"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    date = models.DateField(verbose_name="Datum")
+    time_slot = models.TimeField(verbose_name="Zeitslot")
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name="capacity_recommendations", verbose_name="Bereich")
+
+    # Vorhersage
+    predicted_occupancy = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Vorhergesagte Auslastung %")
+    confidence_score = models.DecimalField(max_digits=4, decimal_places=2, verbose_name="Konfidenz-Score")
+
+    # Empfehlung
+    recommendation_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('increase_staff', 'Personal aufstocken'),
+            ('reduce_staff', 'Personal reduzieren'),
+            ('optimize_tables', 'Tische optimieren'),
+            ('accept_more_reservations', 'Mehr Reservierungen annehmen'),
+            ('limit_reservations', 'Reservierungen begrenzen'),
+            ('normal_operations', 'Normaler Betrieb'),
+        ],
+        verbose_name="Empfehlungstyp"
+    )
+    recommendation_text = models.TextField(verbose_name="Empfehlungstext")
+
+    # Basis der Empfehlung
+    based_on_data = models.JSONField(default=dict, verbose_name="Datenbasis")
+
+    is_applied = models.BooleanField(default=False, verbose_name="Angewendet")
+    applied_at = models.DateTimeField(null=True, blank=True, verbose_name="Angewendet am")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.area.name} - {self.date} {self.time_slot}: {self.recommendation_type}"
+
+    class Meta:
+        verbose_name = "Kapazitäts-Empfehlung"
+        verbose_name_plural = "Kapazitäts-Empfehlungen"
+        ordering = ['-date', '-time_slot']
+        unique_together = ('date', 'time_slot', 'area')

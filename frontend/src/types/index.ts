@@ -167,6 +167,7 @@ export interface RegistrationForm {
 
 export interface SystemSettings {
   id: string;
+  // Firmendaten
   company_name: string;
   company_street: string;
   company_postal_code: string;
@@ -175,11 +176,70 @@ export interface SystemSettings {
   company_email: string;
   company_website?: string;
   company_logo_url?: string;
+  tax_id?: string;
+  vat_id?: string;
+
+  // Reservierungs-Einstellungen
   default_reservation_duration: number;
-  auto_logout_hours: number;
-  backup_frequency_hours: number;
+  reservation_lead_time: number;
+  max_guests_per_reservation: number;
+
+  // Kurtaxe-Einstellungen
   tourist_tax_rate: number;
-  opening_hours: Record<string, any>;
+  tourist_tax_enabled: boolean;
+
+  // System-Einstellungen
+  auto_logout_hours: number;
+  timezone: string;
+  language: string;
+
+  // Backup-Einstellungen
+  backup_frequency_hours: number;
+  last_backup?: string;
+
+  // E-Mail-Einstellungen
+  smtp_host?: string;
+  smtp_port: number;
+  smtp_username?: string;
+  smtp_password?: string;
+  smtp_use_tls: boolean;
+  email_from_address?: string;
+
+  // DSGVO-Einstellungen
+  gdpr_consent_text: string;
+  gdpr_guest_retention_months: number;
+  gdpr_reservation_retention_months: number;
+  gdpr_timetracking_retention_years: number;
+
+  // Deprecated
+  opening_hours?: Record<string, any>;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OpeningHours {
+  id: string;
+  area: string;
+  area_name?: string;
+  weekday: number; // 0=Montag, 6=Sonntag
+  weekday_display?: string;
+  is_closed: boolean;
+  open_time?: string;
+  close_time?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpecialOpeningHours {
+  id: string;
+  area: string;
+  area_name?: string;
+  date: string;
+  description: string;
+  is_closed: boolean;
+  open_time?: string;
+  close_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -205,4 +265,103 @@ export interface AreaCapacity {
   occupied_tables: number;
   reserved_tables: number;
   occupancy_rate: number;
+}
+
+// ============================================================================
+// PHASE 3: KI & ANALYTICS TYPES
+// ============================================================================
+
+export interface ChatMessage {
+  id: string;
+  conversation: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  employee: string;
+  employee_name?: string;
+  title?: string;
+  is_active: boolean;
+  messages?: ChatMessage[];
+  message_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalyticsSnapshot {
+  id: string;
+  snapshot_date: string;
+
+  // Reservierungs-Statistiken
+  total_reservations: number;
+  confirmed_reservations: number;
+  cancelled_reservations: number;
+  no_show_count: number;
+
+  // Auslastungs-Statistiken
+  average_occupancy_rate: number;
+  peak_occupancy_time?: string;
+
+  // Gäste-Statistiken
+  total_guests_served: number;
+  average_party_size: number;
+
+  // Umsatz
+  total_revenue: number;
+
+  // KI-Insights
+  ai_insights: string[];
+
+  created_at: string;
+}
+
+export interface CapacityRecommendation {
+  id: string;
+  date: string;
+  time_slot: string;
+  area: string;
+  area_name?: string;
+
+  // Vorhersage
+  predicted_occupancy: number;
+  confidence_score: number;
+
+  // Empfehlung
+  recommendation_type: 'increase_staff' | 'reduce_staff' | 'optimize_tables' | 'accept_more_reservations' | 'limit_reservations' | 'normal_operations';
+  recommendation_type_display?: string;
+  recommendation_text: string;
+
+  // Basis
+  based_on_data: Record<string, any>;
+
+  is_applied: boolean;
+  applied_at?: string;
+  created_at: string;
+}
+
+export interface OccupancyTrend {
+  date: string;
+  occupancy_rate: number;
+  total_reservations: number;
+  total_guests: number;
+}
+
+export interface RevenueAnalytics {
+  period: string;
+  total_revenue: number;
+  average_per_guest: number;
+  reservation_count: number;
+}
+
+export interface PredictiveInsight {
+  insight_type: string;
+  date: string;
+  area_name?: string;
+  predicted_value: number;
+  confidence: number;
+  recommendation: string;
 }

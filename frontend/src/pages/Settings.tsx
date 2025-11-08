@@ -1,48 +1,109 @@
+import { useState } from 'react';
+import { Settings as SettingsIcon, Clock, Mail, Shield, Database } from 'lucide-react';
+import { SystemSettingsForm } from '../components/settings/SystemSettingsForm';
+import { OpeningHoursManager } from '../components/settings/OpeningHoursManager';
+import { AdvancedSettings } from '../components/settings/AdvancedSettings';
+
+type TabType = 'general' | 'hours' | 'advanced';
+
 export default function Settings() {
+  const [activeTab, setActiveTab] = useState<TabType>('general');
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Einstellungen</h1>
-
-      <div className="card">
-        <h2 className="text-xl font-bold mb-4">Systemkonfiguration</h2>
-        <p className="text-gray-600 mb-4">
-          Individuelle Systemeinstellungen und Firmendaten:
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Einstellungen</h1>
+        <p className="text-gray-600 mt-2">
+          Verwalten Sie Firmendaten, Öffnungszeiten und Systemeinstellungen
         </p>
+      </div>
 
-        <ul className="list-disc list-inside space-y-2 text-gray-700">
-          <li>Firmendaten (Name, Adresse, Kontakt, Logo)</li>
-          <li>Standard Reservierungsdauer</li>
-          <li>Auto-Logout Einstellungen</li>
-          <li>Backup-Frequenz (3x täglich)</li>
-          <li>Kurtaxe-Satz</li>
-          <li>Öffnungszeiten</li>
-          <li>DSGVO-Einstellungen</li>
-          <li>Erweiterbare Systemfunktionen</li>
-        </ul>
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('general')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center space-x-2 ${
+                activeTab === 'general'
+                  ? 'border-bavaria-blue text-bavaria-blue'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <SettingsIcon className="h-5 w-5" />
+              <span>Allgemein</span>
+            </button>
 
-        <div className="mt-6">
-          <button className="btn-primary">Einstellungen speichern</button>
+            <button
+              onClick={() => setActiveTab('hours')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center space-x-2 ${
+                activeTab === 'hours'
+                  ? 'border-bavaria-blue text-bavaria-blue'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Clock className="h-5 w-5" />
+              <span>Öffnungszeiten</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('advanced')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center space-x-2 ${
+                activeTab === 'advanced'
+                  ? 'border-bavaria-blue text-bavaria-blue'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Mail className="h-5 w-5" />
+              <span>Erweitert</span>
+            </button>
+          </nav>
+        </div>
+
+        <div className="p-6">
+          {/* General Settings Tab */}
+          {activeTab === 'general' && <SystemSettingsForm />}
+
+          {/* Opening Hours Tab */}
+          {activeTab === 'hours' && <OpeningHoursManager />}
+
+          {/* Advanced Settings Tab */}
+          {activeTab === 'advanced' && <AdvancedSettings />}
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-xl font-bold mb-4">PWA & Offline-Funktionalität</h2>
+      {/* PWA Info */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">PWA & Offline-Funktionalität</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h3 className="font-medium mb-2">Lokale Speicherung</h3>
-            <p className="text-sm text-gray-600">IndexedDB für Offline-Daten</p>
+          <div className="flex items-start space-x-3">
+            <Database className="h-5 w-5 text-bavaria-blue mt-1" />
+            <div>
+              <h3 className="font-medium text-gray-800">Lokale Speicherung</h3>
+              <p className="text-sm text-gray-600">IndexedDB für Offline-Daten</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium mb-2">Automatische Backups</h3>
-            <p className="text-sm text-gray-600">3x täglich automatisch</p>
+          <div className="flex items-start space-x-3">
+            <Database className="h-5 w-5 text-bavaria-green mt-1" />
+            <div>
+              <h3 className="font-medium text-gray-800">Automatische Backups</h3>
+              <p className="text-sm text-gray-600">Konfigurierbar (Standard: 3x täglich)</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium mb-2">Sync-Queue</h3>
-            <p className="text-sm text-gray-600">Offline-Änderungen werden synchronisiert</p>
+          <div className="flex items-start space-x-3">
+            <Shield className="h-5 w-5 text-bavaria-yellow mt-1" />
+            <div>
+              <h3 className="font-medium text-gray-800">Sync-Queue</h3>
+              <p className="text-sm text-gray-600">Offline-Änderungen werden synchronisiert</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium mb-2">Hintergrundsynchronisation</h3>
-            <p className="text-sm text-gray-600">Service Worker aktiv</p>
+          <div className="flex items-start space-x-3">
+            <SettingsIcon className="h-5 w-5 text-bavaria-red mt-1" />
+            <div>
+              <h3 className="font-medium text-gray-800">Hintergrundsynchronisation</h3>
+              <p className="text-sm text-gray-600">Service Worker aktiv</p>
+            </div>
           </div>
         </div>
       </div>
