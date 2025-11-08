@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit, X, AlertTriangle, Save } from 'lucide-react';
-import { api } from '../../services/api';
+import { employeesAPI, timeTrackingAPI } from '../../services/api';
 import { TimeTracking, Employee } from '../../types';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -22,13 +22,19 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
   // Fetch employees
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: api.employees.getAll,
+    queryFn: async () => {
+      const response = await employeesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Fetch time trackings
   const { data: timeTrackings = [], isLoading: trackingsLoading } = useQuery<TimeTracking[]>({
     queryKey: ['timeTrackings'],
-    queryFn: api.timeTracking.getAll,
+    queryFn: async () => {
+      const response = await timeTrackingAPI.getAll();
+      return response.data;
+    },
   });
 
   const tracking = timeTrackings.find(t => t.id === selectedTracking);
@@ -56,7 +62,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: (data: Partial<TimeTracking>) =>
-      api.timeTracking.update(selectedTracking, data),
+      timeTrackingAPI.update(selectedTracking, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeTrackings'] });
       onClose();

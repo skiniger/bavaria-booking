@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MapPin, X, Save } from 'lucide-react';
-import { api } from '../../services/api';
+import { areasAPI } from '../../services/api';
 import { Area } from '../../types';
 
 interface AreaFormProps {
@@ -27,7 +27,10 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Area>) => api.areas.create(data),
+    mutationFn: async (data: Partial<Area>) => {
+      const response = await areasAPI.create(data);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
       onClose();
@@ -36,7 +39,10 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Area>) => api.areas.update(area!.id, data),
+    mutationFn: async (data: Partial<Area>) => {
+      const response = await areasAPI.update(area!.id, data);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
       onClose();

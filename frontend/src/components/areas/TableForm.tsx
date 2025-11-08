@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Grid, X, Save } from 'lucide-react';
-import { api } from '../../services/api';
+import { areasAPI, tablesAPI } from '../../services/api';
 import { Table, Area } from '../../types';
 
 interface TableFormProps {
@@ -30,18 +30,27 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
   // Fetch areas
   const { data: areas = [] } = useQuery<Area[]>({
     queryKey: ['areas'],
-    queryFn: api.areas.getAll,
+    queryFn: async () => {
+      const response = await areasAPI.getAll();
+      return response.data;
+    },
   });
 
   // Fetch tables (to check for duplicate table numbers)
   const { data: existingTables = [] } = useQuery<Table[]>({
     queryKey: ['tables'],
-    queryFn: api.tables.getAll,
+    queryFn: async () => {
+      const response = await tablesAPI.getAll();
+      return response.data;
+    },
   });
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Table>) => api.tables.create(data),
+    mutationFn: async (data: Partial<Table>) => {
+      const response = await tablesAPI.create(data);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
       queryClient.invalidateQueries({ queryKey: ['areas'] });
@@ -51,7 +60,10 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Table>) => api.tables.update(table!.id, data),
+    mutationFn: async (data: Partial<Table>) => {
+      const response = await tablesAPI.update(table!.id, data);
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
       queryClient.invalidateQueries({ queryKey: ['areas'] });
