@@ -7,7 +7,8 @@ from .views import (
     OpeningHoursViewSet, SpecialOpeningHoursViewSet,
     DashboardViewSet,
     ChatConversationViewSet, ChatMessageViewSet,
-    AnalyticsSnapshotViewSet, CapacityRecommendationViewSet, AnalyticsAPIViewSet
+    AnalyticsSnapshotViewSet, CapacityRecommendationViewSet, AnalyticsAPIViewSet,
+    ReservationRequestViewSet
 )
 
 # Create a router and register our viewsets with it.
@@ -19,6 +20,7 @@ router.register(r'tables', TableViewSet, basename='table')
 router.register(r'table-combinations', TableCombinationViewSet, basename='table-combination')
 router.register(r'guests', GuestViewSet, basename='guest')
 router.register(r'reservations', ReservationViewSet, basename='reservation')
+router.register(r'reservation-requests', ReservationRequestViewSet, basename='reservation-request')
 
 # Personalverwaltung
 router.register(r'employees', EmployeeViewSet, basename='employee')

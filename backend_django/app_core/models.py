@@ -131,6 +131,56 @@ class Reservation(models.Model):
         verbose_name_plural = "Reservierungen"
         ordering = ['-reservation_time']
 
+class ReservationRequest(models.Model):
+    """
+    Quarantäne für eingehende öffentliche Reservierungsanfragen (Restaurant & Pension).
+    Nichts wird hier je stillschweigend verworfen - verdächtige Anfragen bleiben
+    als Datensatz erhalten, bis ein Mitarbeiter sie freigibt oder ablehnt.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Rohdaten der Anfrage, wie vom Gast übermittelt
+    first_name = models.CharField(max_length=100, verbose_name="Vorname")
+    last_name = models.CharField(max_length=100, verbose_name="Nachname")
+    phone_number = models.CharField(max_length=20, verbose_name="Telefonnummer")
+    email = models.EmailField(blank=True, null=True, verbose_name="E-Mail")
+    requested_time = models.DateTimeField(verbose_name="Gewünschter Zeitpunkt")
+    number_of_guests = models.PositiveIntegerField(verbose_name="Anzahl Gäste")
+    message = models.TextField(blank=True, null=True, verbose_name="Nachricht/Sonderwünsche")
+
+    # Herkunft & Prüfung
+    source_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="Quell-IP")
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name="Eingegangen am")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending_review', 'Prüfung ausstehend'),
+            ('approved', 'Freigegeben'),
+            ('rejected', 'Abgelehnt'),
+            ('auto_approved', 'Automatisch freigegeben'),
+        ],
+        default='pending_review',
+        verbose_name="Status"
+    )
+    risk_score = models.IntegerField(default=0, verbose_name="Risiko-Score")
+    risk_reasons = models.JSONField(default=list, blank=True, verbose_name="Risiko-Gründe")
+
+    # Verknüpfung zur tatsächlich erstellten Reservierung (nach Freigabe)
+    reservation = models.ForeignKey(
+        'Reservation', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="source_requests", verbose_name="Erstellte Reservierung"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="Geprüft am")
+
+    def __str__(self):
+        return f"Anfrage {self.first_name} {self.last_name} ({self.status}, Score {self.risk_score})"
+
+    class Meta:
+        verbose_name = "Reservierungsanfrage"
+        verbose_name_plural = "Reservierungsanfragen"
+        ordering = ['-submitted_at']
+
+
 class TableCombination(models.Model):
     """Kombinierte Tische für größere Gruppen"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

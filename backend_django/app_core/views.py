@@ -1,7 +1,8 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db import IntegrityError, models
+from rest_framework.permissions import AllowAny
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from django.http import HttpResponse
 from datetime import datetime, timedelta
@@ -10,7 +11,8 @@ from .models import (
     Area, Table, Guest, Reservation, TableCombination,
     Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
     OpeningHours, SpecialOpeningHours,
-    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation
+    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation,
+    ReservationRequest
 )
 from .serializers import (
     AreaSerializer, TableSerializer, GuestSerializer, ReservationSerializer,
@@ -20,9 +22,11 @@ from .serializers import (
     DashboardStatsSerializer,
     ChatConversationSerializer, ChatMessageSerializer,
     AnalyticsSnapshotSerializer, CapacityRecommendationSerializer,
-    OccupancyTrendSerializer, RevenueAnalyticsSerializer, PredictiveInsightSerializer
+    OccupancyTrendSerializer, RevenueAnalyticsSerializer, PredictiveInsightSerializer,
+    ReservationRequestSerializer, ReservationRequestSubmitSerializer
 )
 from . import ai_service
+from .services.reservation_filter import score_submission, is_auto_approved
 from .utils.pdf_exports import ReservationPDFExporter, RegistrationFormPDFExporter
 from .utils.csv_exports import (
     TimeTrackingCSVExporter, GuestCSVExporter,
@@ -343,6 +347,166 @@ class ReservationViewSet(viewsets.ModelViewSet):
         filename = f"reservierungen_{datetime.now().strftime('%Y%m%d')}.csv"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+
+def _create_guest_and_reservation(req: ReservationRequest) -> Reservation:
+    """
+    Erstellt (oder findet einen bestehenden) Guest und legt darauf eine
+    Reservation mit Status 'pending_confirmation' an - identisch zum
+    bisherigen Ablauf, nur ausgelöst durch eine freigegebene Anfrage.
+    Wird sowohl bei Auto-Freigabe als auch beim manuellen 'approve' genutzt.
+    """
+    guest = None
+    if req.email:
+        guest = Guest.objects.filter(email__iexact=req.email).first()
+    if not guest:
+        guest = Guest.objects.filter(phone_number=req.phone_number).first()
+    if not guest:
+        guest = Guest.objects.create(
+            first_name=req.first_name,
+            last_name=req.last_name,
+            phone_number=req.phone_number,
+            email=req.email or None,
+        )
+
+    reservation = Reservation.objects.create(
+        guest=guest,
+        reservation_time=req.requested_time,
+        number_of_guests=req.number_of_guests,
+        notes=req.message or None,
+        status='pending_confirmation',
+    )
+    return reservation
+
+
+class ReservationRequestViewSet(mixins.CreateModelMixin,
+                                mixins.ListModelMixin,
+                                mixins.RetrieveModelMixin,
+                                viewsets.GenericViewSet):
+    """
+    API Endpunkt für eingehende Reservierungsanfragen (Quarantäne).
+
+    - POST /api/reservation-requests/ : öffentliche Einreichung (Gast, ohne Login),
+      wird gegen Spam-/Phishing-Heuristiken geprüft.
+    - GET  /api/reservation-requests/?status=pending_review : Mitarbeiter-Ansicht.
+    - POST /api/reservation-requests/{id}/approve/ : manuelle Freigabe.
+    - POST /api/reservation-requests/{id}/reject/  : Ablehnung.
+
+    Bewusst kein PUT/PATCH/DELETE: Inhalte dürfen nach der Risiko-Bewertung
+    nicht mehr verändert und Quarantäne-Datensätze nicht gelöscht werden.
+    """
+    queryset = ReservationRequest.objects.all()
+    serializer_class = ReservationRequestSerializer
+
+    def get_permissions(self):
+        # Einreichung ist immer öffentlich; alles andere folgt dem globalen
+        # Default, damit eine spätere Einschränkung dort automatisch greift.
+        if self.action == 'create':
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        """Filtern nach Status, z.B. /api/reservation-requests/?status=pending_review"""
+        queryset = super().get_queryset()
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """
+        Öffentliche Einreichung einer Reservierungsanfrage. Erstellt IMMER einen
+        ReservationRequest-Datensatz (Quarantäne). Nur bei niedrigem Risiko wird
+        direkt Guest + Reservation angelegt (auto_approved).
+        """
+        input_serializer = ReservationRequestSubmitSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        data = input_serializer.validated_data
+
+        source_ip = request.META.get('REMOTE_ADDR') or None
+
+        risk_score, risk_reasons = score_submission(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            phone_number=data['phone_number'],
+            email=data.get('email'),
+            requested_time=data['requested_time'],
+            number_of_guests=data['number_of_guests'],
+            message=data.get('message', ''),
+            source_ip=source_ip,
+            recent_requests_queryset=ReservationRequest.objects.all(),
+        )
+
+        auto_approved = is_auto_approved(risk_score)
+
+        with transaction.atomic():
+            req = self._create_request(data, source_ip, risk_score, risk_reasons, auto_approved)
+
+        # Öffentliche Antwort bewusst knapp: Status, Score, Gründe und IP gehen
+        # den Einreicher nichts an (sonst lassen sich die Heuristiken austesten).
+        return Response(
+            {'id': req.id, 'detail': 'Anfrage eingegangen.'},
+            status=status.HTTP_201_CREATED
+        )
+
+    @staticmethod
+    def _create_request(data, source_ip, risk_score, risk_reasons, auto_approved):
+        req = ReservationRequest.objects.create(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            phone_number=data['phone_number'],
+            email=data.get('email') or None,
+            requested_time=data['requested_time'],
+            number_of_guests=data['number_of_guests'],
+            message=data.get('message', ''),
+            source_ip=source_ip,
+            status='auto_approved' if auto_approved else 'pending_review',
+            risk_score=risk_score,
+            risk_reasons=risk_reasons,
+        )
+
+        if auto_approved:
+            req.reservation = _create_guest_and_reservation(req)
+            req.reviewed_at = timezone.now()
+            req.save(update_fields=['reservation', 'reviewed_at'])
+        return req
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Manuelle Freigabe einer in Quarantäne stehenden Anfrage durch Mitarbeiter."""
+        req = self.get_object()
+        with transaction.atomic():
+            # Bedingtes UPDATE statt Lesen-dann-Schreiben: bei gleichzeitigen
+            # Klicks gewinnt genau einer, es entsteht keine doppelte Reservierung.
+            claimed = ReservationRequest.objects.filter(
+                pk=req.pk, status='pending_review'
+            ).update(status='approved', reviewed_at=timezone.now())
+            if not claimed:
+                return Response(
+                    {'error': 'Nur Anfragen mit Status "pending_review" können freigegeben werden.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            req.refresh_from_db()
+            req.reservation = _create_guest_and_reservation(req)
+            req.save(update_fields=['reservation'])
+
+        return Response(ReservationRequestSerializer(req).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        """Ablehnung einer in Quarantäne stehenden Anfrage - keine Guest/Reservation-Erstellung."""
+        req = self.get_object()
+        claimed = ReservationRequest.objects.filter(
+            pk=req.pk, status='pending_review'
+        ).update(status='rejected', reviewed_at=timezone.now())
+        if not claimed:
+            return Response(
+                {'error': 'Nur Anfragen mit Status "pending_review" können abgelehnt werden.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        req.refresh_from_db()
+
+        return Response(ReservationRequestSerializer(req).data, status=status.HTTP_200_OK)
 
 
 class TableCombinationViewSet(viewsets.ModelViewSet):
