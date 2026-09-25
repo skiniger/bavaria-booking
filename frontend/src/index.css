@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: Import statt @tailwind-Direktiven; bestehende Konfiguration
+   (u. a. bavaria-Farben) wird über @config weiterverwendet. */
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @layer base {
   body {

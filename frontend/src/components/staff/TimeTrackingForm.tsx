@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, LogIn, LogOut, X, Coffee } from 'lucide-react';
 import { timeTrackingAPI, employeesAPI } from '../../services/api';
-import { Employee, TimeTracking } from '../../types';
+import type { Employee, TimeTracking } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -37,7 +37,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
 
   // Check if employee is currently clocked in
   const currentTracking = timeTrackings.find(
-    t => t.employee === selectedEmployee && t.clock_in && !t.clock_out
+    t => t.employee === selectedEmployee && t.check_in && !t.check_out
   );
 
   // Clock in mutation
@@ -70,8 +70,8 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
 
     clockInMutation.mutate({
       employee: selectedEmployee,
-      clock_in: new Date().toISOString(),
-      notes: notes || undefined,
+      check_in: new Date().toISOString(),
+      correction_note: notes || undefined,
     });
   };
 
@@ -81,9 +81,9 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
     clockOutMutation.mutate({
       id: currentTracking.id,
       data: {
-        clock_out: new Date().toISOString(),
+        check_out: new Date().toISOString(),
         break_minutes: breakMinutes || 0,
-        notes: notes || currentTracking.notes,
+        correction_note: notes || currentTracking.correction_note,
       },
     });
   };
@@ -161,10 +161,10 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
                 <p className="font-semibold text-gray-800">Eingestempelt seit</p>
               </div>
               <p className="text-2xl font-bold text-bavaria-green">
-                {format(new Date(currentTracking.clock_in), 'HH:mm', { locale: de })} Uhr
+                {format(new Date(currentTracking.check_in), 'HH:mm', { locale: de })} Uhr
               </p>
               <p className="text-sm text-gray-600 mt-1">
-                {format(new Date(currentTracking.clock_in), 'EEEE, dd. MMMM yyyy', { locale: de })}
+                {format(new Date(currentTracking.check_in), 'EEEE, dd. MMMM yyyy', { locale: de })}
               </p>
             </div>
           )}

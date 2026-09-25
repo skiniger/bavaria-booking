@@ -3,7 +3,8 @@ from .models import (
     Area, Table, Guest, Reservation, TableCombination,
     Employee, TimeTracking, PensionGuest, RegistrationForm, SystemSettings,
     OpeningHours, SpecialOpeningHours,
-    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation
+    ChatConversation, ChatMessage, AnalyticsSnapshot, CapacityRecommendation,
+    ReservationRequest
 )
 from django.utils import timezone
 
@@ -31,7 +32,8 @@ class TableSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Table
-        fields = ['id', 'area', 'area_name', 'table_number', 'capacity', 'status', 'is_reservable', 'notes', 'created_at', 'updated_at']
+        fields = ['id', 'area', 'area_name', 'table_number', 'capacity', 'status', 'is_reservable',
+                  'is_combinable', 'position_x', 'position_y', 'rotation', 'notes', 'created_at', 'updated_at']
         read_only_fields = ['area_name']
 
     def validate(self, data):
@@ -149,6 +151,37 @@ class ReservationSerializer(serializers.ModelSerializer):
                         {"table": f"Tisch {table.table_number} ist im gewünschten Zeitraum ({reservation_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) bereits belegt."}
                     )
         return data
+
+
+class ReservationRequestSubmitSerializer(serializers.Serializer):
+    """
+    Serializer für die öffentliche Anfrage-Einreichung (kein Login nötig).
+    Bewusst als plain Serializer (nicht ModelSerializer), damit über dieses
+    Feld-Set niemand status/risk_score/reservation o.ä. mitschicken und
+    überschreiben kann - nur die Rohdaten, die ein echter Gast eingeben würde.
+    """
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(max_length=100)
+    phone_number = serializers.CharField(max_length=20)
+    # Bewusst CharField statt EmailField: offensichtlich falsches Format soll nicht
+    # hart mit 400 abgelehnt werden, sondern als Heuristik in die Risiko-Bewertung
+    # einfließen (siehe reservation_filter._is_malformed_email).
+    email = serializers.CharField(max_length=254, required=False, allow_blank=True, allow_null=True)
+    requested_time = serializers.DateTimeField()
+    number_of_guests = serializers.IntegerField(min_value=1, max_value=1000)
+    message = serializers.CharField(required=False, allow_blank=True, max_length=5000)
+
+
+class ReservationRequestSerializer(serializers.ModelSerializer):
+    """Serializer für die Mitarbeiter-Ansicht der Quarantäne-Anfragen."""
+
+    class Meta:
+        model = ReservationRequest
+        fields = '__all__'
+        read_only_fields = [
+            'id', 'status', 'risk_score', 'risk_reasons', 'source_ip',
+            'submitted_at', 'reservation', 'reviewed_at'
+        ]
 
 
 class TableCombinationSerializer(serializers.ModelSerializer):

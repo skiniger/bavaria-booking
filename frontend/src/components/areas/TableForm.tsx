@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Grid, X, Save } from 'lucide-react';
 import { areasAPI, tablesAPI } from '../../services/api';
-import { Table, Area } from '../../types';
+import type { Table, Area } from '../../types';
 
 interface TableFormProps {
   onClose: () => void;

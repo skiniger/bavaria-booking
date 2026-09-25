@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, Filter, Download, Calendar, Edit } from 'lucide-react';
+import { Filter, Download, Edit } from 'lucide-react';
 import { employeesAPI, timeTrackingAPI } from '../../services/api';
-import { TimeTracking, Employee } from '../../types';
+import type { TimeTracking, Employee } from '../../types';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -75,7 +75,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
     // Filter by date range
     if (dateFrom || dateTo) {
       filtered = filtered.filter(t => {
-        const trackingDate = new Date(t.clock_in);
+        const trackingDate = new Date(t.check_in);
         const from = dateFrom ? new Date(dateFrom) : new Date('1970-01-01');
         const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date('2099-12-31');
         return isWithinInterval(trackingDate, { start: from, end: to });
@@ -84,7 +84,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
 
     // Sort by date (newest first)
     return filtered.sort((a, b) =>
-      new Date(b.clock_in).getTime() - new Date(a.clock_in).getTime()
+      new Date(b.check_in).getTime() - new Date(a.check_in).getTime()
     );
   }, [timeTrackings, selectedEmployee, dateFrom, dateTo]);
 
@@ -92,8 +92,8 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
   const statistics = useMemo(() => {
     const totalHours = filteredTrackings.reduce((sum, t) => sum + (t.total_hours || 0), 0);
     const totalBreakMinutes = filteredTrackings.reduce((sum, t) => sum + (t.break_minutes || 0), 0);
-    const completedShifts = filteredTrackings.filter(t => t.clock_out).length;
-    const activeShifts = filteredTrackings.filter(t => !t.clock_out).length;
+    const completedShifts = filteredTrackings.filter(t => t.check_out).length;
+    const activeShifts = filteredTrackings.filter(t => !t.check_out).length;
 
     // Group by employee
     const byEmployee: Record<string, { hours: number; shifts: number }> = {};
@@ -127,12 +127,12 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
       return [
         `${emp?.first_name} ${emp?.last_name}`,
         emp?.employee_number || '',
-        format(new Date(t.clock_in), 'dd.MM.yyyy', { locale: de }),
-        format(new Date(t.clock_in), 'HH:mm', { locale: de }),
-        t.clock_out ? format(new Date(t.clock_out), 'HH:mm', { locale: de }) : 'Aktiv',
+        format(new Date(t.check_in), 'dd.MM.yyyy', { locale: de }),
+        format(new Date(t.check_in), 'HH:mm', { locale: de }),
+        t.check_out ? format(new Date(t.check_out), 'HH:mm', { locale: de }) : 'Aktiv',
         t.break_minutes || 0,
         t.total_hours?.toFixed(2) || '0.00',
-        (t.notes || '').replace(/\n/g, ' '),
+        (t.correction_note || '').replace(/\n/g, ' '),
       ];
     });
 
@@ -377,7 +377,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTrackings.map(tracking => {
                   const employee = getEmployeeDetails(tracking.employee);
-                  const hasCorrection = tracking.notes?.includes('[KORREKTUR]');
+                  const hasCorrection = tracking.correction_note?.includes('[KORREKTUR]');
                   return (
                     <tr key={tracking.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -394,13 +394,13 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(new Date(tracking.clock_in), 'dd.MM.yyyy', { locale: de })}
+                        {format(new Date(tracking.check_in), 'dd.MM.yyyy', { locale: de })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(new Date(tracking.clock_in), 'HH:mm', { locale: de })}
+                        {format(new Date(tracking.check_in), 'HH:mm', { locale: de })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {tracking.clock_out ? format(new Date(tracking.clock_out), 'HH:mm', { locale: de }) : '-'}
+                        {tracking.check_out ? format(new Date(tracking.check_out), 'HH:mm', { locale: de }) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {tracking.break_minutes || 0} Min
@@ -410,11 +410,11 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          tracking.clock_out
+                          tracking.check_out
                             ? 'bg-bavaria-green bg-opacity-10 text-bavaria-green'
                             : 'bg-bavaria-yellow bg-opacity-10 text-bavaria-yellow'
                         }`}>
-                          {tracking.clock_out ? 'Abgeschlossen' : 'Aktiv'}
+                          {tracking.check_out ? 'Abgeschlossen' : 'Aktiv'}
                         </span>
                         {hasCorrection && (
                           <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bavaria-yellow bg-opacity-10 text-bavaria-yellow">

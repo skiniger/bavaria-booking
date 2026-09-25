@@ -112,7 +112,7 @@ export default function PensionGuestForm({
     createOrUpdateMutation.mutate(submitData);
   };
 
-  const updateField = (field: keyof PensionGuest, value: any) => {
+  const updateField = <K extends keyof PensionGuest>(field: K, value: PensionGuest[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -156,7 +156,7 @@ export default function PensionGuestForm({
                 </label>
                 <select
                   value={formData.salutation}
-                  onChange={(e) => updateField('salutation', e.target.value)}
+                  onChange={(e) => updateField('salutation', e.target.value as PensionGuest['salutation'])}
                   className="input"
                   required
                 >
@@ -341,7 +341,7 @@ export default function PensionGuestForm({
                 </label>
                 <select
                   value={formData.document_type}
-                  onChange={(e) => updateField('document_type', e.target.value)}
+                  onChange={(e) => updateField('document_type', e.target.value as PensionGuest['document_type'])}
                   className="input"
                   required
                 >

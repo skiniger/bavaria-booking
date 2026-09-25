@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, Users, Calendar, TrendingUp } from 'lucide-react';
 import { timeTrackingAPI, employeesAPI } from '../../services/api';
-import { TimeTracking, Employee } from '../../types';
+import type { TimeTracking, Employee } from '../../types';
 import { format, differenceInHours, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -36,18 +36,18 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
 
   // Currently clocked in employees
   const currentlyWorking = timeTrackings.filter(
-    t => t.clock_in && !t.clock_out
+    t => t.check_in && !t.check_out
   );
 
   // Today's time trackings
   const todayTrackings = timeTrackings.filter(
-    t => new Date(t.clock_in) >= todayStart && new Date(t.clock_in) <= todayEnd
+    t => new Date(t.check_in) >= todayStart && new Date(t.check_in) <= todayEnd
   );
 
   // Calculate total hours today
   const totalHoursToday = todayTrackings.reduce((sum, t) => {
-    if (t.clock_in && t.clock_out) {
-      const hours = differenceInHours(new Date(t.clock_out), new Date(t.clock_in));
+    if (t.check_in && t.check_out) {
+      const hours = differenceInHours(new Date(t.check_out), new Date(t.check_in));
       return sum + hours;
     }
     return sum;
@@ -168,10 +168,10 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Eingestempelt um</p>
                       <p className="font-semibold text-gray-800">
-                        {format(new Date(tracking.clock_in), 'HH:mm', { locale: de })} Uhr
+                        {format(new Date(tracking.check_in), 'HH:mm', { locale: de })} Uhr
                       </p>
                       <p className="text-sm text-bavaria-green font-medium">
-                        {calculateDuration(tracking.clock_in)}
+                        {calculateDuration(tracking.check_in)}
                       </p>
                     </div>
                   </div>
@@ -186,11 +186,11 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">
-            Abgeschlossene Schichten heute ({todayTrackings.filter(t => t.clock_out).length})
+            Abgeschlossene Schichten heute ({todayTrackings.filter(t => t.check_out).length})
           </h3>
         </div>
         <div className="p-6">
-          {todayTrackings.filter(t => t.clock_out).length === 0 ? (
+          {todayTrackings.filter(t => t.check_out).length === 0 ? (
             <p className="text-gray-500 text-center py-8">
               Heute wurden noch keine Schichten abgeschlossen
             </p>
@@ -221,8 +221,8 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {todayTrackings
-                    .filter(t => t.clock_out)
-                    .sort((a, b) => new Date(b.clock_in).getTime() - new Date(a.clock_in).getTime())
+                    .filter(t => t.check_out)
+                    .sort((a, b) => new Date(b.check_in).getTime() - new Date(a.check_in).getTime())
                     .map(tracking => {
                       const employee = getEmployeeDetails(tracking.employee);
                       return (
@@ -245,13 +245,13 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {format(new Date(tracking.clock_in), 'HH:mm', { locale: de })} Uhr
+                            {format(new Date(tracking.check_in), 'HH:mm', { locale: de })} Uhr
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {tracking.clock_out && format(new Date(tracking.clock_out), 'HH:mm', { locale: de })} Uhr
+                            {tracking.check_out && format(new Date(tracking.check_out), 'HH:mm', { locale: de })} Uhr
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {tracking.clock_out && calculateDuration(tracking.clock_in, tracking.clock_out)}
+                            {tracking.check_out && calculateDuration(tracking.check_in, tracking.check_out)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {tracking.break_minutes || 0} Min

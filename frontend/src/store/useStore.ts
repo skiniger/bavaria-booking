@@ -35,8 +35,8 @@ interface AppState {
   setReservations: (reservations: Reservation[]) => void;
 
   // Offline Queue
-  offlineQueue: any[];
-  addToOfflineQueue: (item: any) => void;
+  offlineQueue: unknown[];
+  addToOfflineQueue: (item: unknown) => void;
   clearOfflineQueue: () => void;
 
   // App State

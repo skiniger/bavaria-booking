@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { MapPin, Grid, Plus } from 'lucide-react';
+import { MapPin, Plus } from 'lucide-react';
 import { AreaManagement } from '../components/areas/AreaManagement';
 import { TableLayoutEditor } from '../components/areas/TableLayoutEditor';
 import { AreaForm } from '../components/areas/AreaForm';
 import { TableForm } from '../components/areas/TableForm';
-import { Area } from '../types';
+import type { Area } from '../types';
 
 type ViewMode = 'areas' | 'layout';
 

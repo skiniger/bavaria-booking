@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tablesAPI, tableCombinationsAPI } from '../../services/api';
-import type { Table, TableCombination } from '../../types';
-import { X, Plus, Trash2, Save } from 'lucide-react';
+import type { TableCombination } from '../../types';
+import { X, Trash2, Save } from 'lucide-react';
 
 interface TableCombinationToolProps {
   isOpen: boolean;

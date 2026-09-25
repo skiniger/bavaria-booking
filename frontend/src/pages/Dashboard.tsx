@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardAPI } from '../services/api';
-import { Users, Calendar, CheckCircle, TrendingUp } from 'lucide-react';
+import { Users, Calendar, CheckCircle, TrendingUp, type LucideIcon } from 'lucide-react';
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -21,7 +21,7 @@ export default function Dashboard() {
     );
   }
 
-  const StatCard = ({ title, value, icon: Icon, color }: any) => (
+  const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: number | string; icon: LucideIcon; color: string }) => (
     <div className="card">
       <div className="flex items-center justify-between">
         <div>
@@ -34,19 +34,6 @@ export default function Dashboard() {
       </div>
     </div>
   );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'bg-bavaria-green';
-      case 'occupied':
-        return 'bg-bavaria-red';
-      case 'reserved':
-        return 'bg-bavaria-yellow';
-      default:
-        return 'bg-gray-400';
-    }
-  };
 
   return (
     <div className="space-y-6">

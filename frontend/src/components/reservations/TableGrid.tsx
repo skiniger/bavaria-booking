@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tablesAPI, areasAPI, reservationsAPI } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { tablesAPI } from '../../services/api';
 import type { Table, Area } from '../../types';
 import { Users, MapPin, Plus } from 'lucide-react';
 
@@ -10,8 +9,7 @@ interface TableGridProps {
   selectedDate?: Date;
 }
 
-export default function TableGrid({ selectedArea, onTableClick, selectedDate }: TableGridProps) {
-  const queryClient = useQueryClient();
+export default function TableGrid({ selectedArea, onTableClick }: TableGridProps) {
 
   const { data: tables = [], isLoading } = useQuery({
     queryKey: ['tables', selectedArea?.id],

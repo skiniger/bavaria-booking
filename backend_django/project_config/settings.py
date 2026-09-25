@@ -51,8 +51,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS Settings - Allow all origins for development
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS: nur bekannte Frontend-Origins – mit Session-Cookies darf nicht jede
+# fremde Seite angemeldete Anfragen stellen.
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -60,6 +60,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+# Frontend läuft auf anderem Port → Origin-Prüfung der CSRF-Middleware freigeben.
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 ROOT_URLCONF = 'project_config.urls'
 
@@ -154,14 +156,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
+    # Session-Cookie + CSRF – passt zum Frontend (axios withCredentials).
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # Hier könnten später Token-Authentifizierungsklassen (z.B. JWT) hinzugefügt werden
-        # 'rest_framework.authentication.SessionAuthentication', # Für Browsable API
-        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
+    # Alles erfordert Anmeldung; öffentliche Ausnahmen setzen AllowAny gezielt
+    # (Login, CSRF-Cookie, öffentliche Reservierungsanfrage).
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny', # Für den Anfang, später einschränken
-        # 'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10, # Standard-Seitengröße für paginierte Ergebnisse

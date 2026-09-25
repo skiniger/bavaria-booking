@@ -11,6 +11,22 @@ class Area(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="Beschreibung")
     total_capacity = models.PositiveIntegerField(default=0, verbose_name="Gesamtkapazität")
     color_code = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbcode")
+    color = models.CharField(
+        max_length=20,
+        choices=[
+            ('blue', 'Blau'), ('green', 'Grün'), ('yellow', 'Gelb'), ('red', 'Rot'),
+            ('purple', 'Lila'), ('orange', 'Orange'), ('pink', 'Pink'), ('indigo', 'Indigo'),
+        ],
+        default='blue',
+        verbose_name="Anzeigefarbe",
+    )
+    location = models.CharField(max_length=100, blank=True, verbose_name="Lage (z. B. Erdgeschoss)")
+    layout_width = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(5)], verbose_name="Layout-Breite (Raster)",
+    )
+    layout_height = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(5)], verbose_name="Layout-Höhe (Raster)",
+    )
     is_active = models.BooleanField(default=True, verbose_name="Aktiv")
     allows_combinations = models.BooleanField(default=True, verbose_name="Tischkombinationen erlaubt")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,6 +61,7 @@ class Table(models.Model):
     is_combinable = models.BooleanField(default=False, verbose_name="Kombinierbar")
     position_x = models.IntegerField(default=0, verbose_name="Position X")
     position_y = models.IntegerField(default=0, verbose_name="Position Y")
+    rotation = models.PositiveIntegerField(default=0, verbose_name="Drehung (Grad)")
     notes = models.TextField(blank=True, null=True, verbose_name="Notizen")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -131,6 +148,56 @@ class Reservation(models.Model):
         verbose_name_plural = "Reservierungen"
         ordering = ['-reservation_time']
 
+class ReservationRequest(models.Model):
+    """
+    Quarantäne für eingehende öffentliche Reservierungsanfragen (Restaurant & Pension).
+    Nichts wird hier je stillschweigend verworfen - verdächtige Anfragen bleiben
+    als Datensatz erhalten, bis ein Mitarbeiter sie freigibt oder ablehnt.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Rohdaten der Anfrage, wie vom Gast übermittelt
+    first_name = models.CharField(max_length=100, verbose_name="Vorname")
+    last_name = models.CharField(max_length=100, verbose_name="Nachname")
+    phone_number = models.CharField(max_length=20, verbose_name="Telefonnummer")
+    email = models.EmailField(blank=True, null=True, verbose_name="E-Mail")
+    requested_time = models.DateTimeField(verbose_name="Gewünschter Zeitpunkt")
+    number_of_guests = models.PositiveIntegerField(verbose_name="Anzahl Gäste")
+    message = models.TextField(blank=True, null=True, verbose_name="Nachricht/Sonderwünsche")
+
+    # Herkunft & Prüfung
+    source_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="Quell-IP")
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name="Eingegangen am")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending_review', 'Prüfung ausstehend'),
+            ('approved', 'Freigegeben'),
+            ('rejected', 'Abgelehnt'),
+            ('auto_approved', 'Automatisch freigegeben'),
+        ],
+        default='pending_review',
+        verbose_name="Status"
+    )
+    risk_score = models.IntegerField(default=0, verbose_name="Risiko-Score")
+    risk_reasons = models.JSONField(default=list, blank=True, verbose_name="Risiko-Gründe")
+
+    # Verknüpfung zur tatsächlich erstellten Reservierung (nach Freigabe)
+    reservation = models.ForeignKey(
+        'Reservation', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="source_requests", verbose_name="Erstellte Reservierung"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="Geprüft am")
+
+    def __str__(self):
+        return f"Anfrage {self.first_name} {self.last_name} ({self.status}, Score {self.risk_score})"
+
+    class Meta:
+        verbose_name = "Reservierungsanfrage"
+        verbose_name_plural = "Reservierungsanfragen"
+        ordering = ['-submitted_at']
+
+
 class TableCombination(models.Model):
     """Kombinierte Tische für größere Gruppen"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -183,6 +250,7 @@ class TimeTracking(models.Model):
     auto_logout = models.BooleanField(default=False, verbose_name="Auto-Logout")
     manual_correction = models.BooleanField(default=False, verbose_name="Manuelle Korrektur")
     correction_note = models.TextField(blank=True, null=True, verbose_name="Korrektur Notiz")
+    break_minutes = models.PositiveIntegerField(default=0, verbose_name="Pause (Minuten)")
     total_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Gesamtstunden")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

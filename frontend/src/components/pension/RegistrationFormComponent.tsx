@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { registrationFormsAPI, pensionGuestsAPI, systemSettingsAPI } from '../../services/api';
+import { registrationFormsAPI, systemSettingsAPI } from '../../services/api';
 import type { PensionGuest, RegistrationForm } from '../../types';
-import { X, User, Calendar, Hotel, Briefcase, Euro, Coffee, CreditCard, FileCheck } from 'lucide-react';
+import { X, User, Calendar, Briefcase, Euro, Coffee, CreditCard, FileCheck } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
 interface RegistrationFormComponentProps {
@@ -147,7 +147,7 @@ export default function RegistrationFormComponent({
     createOrUpdateMutation.mutate(submitData);
   };
 
-  const updateField = (field: keyof RegistrationForm, value: any) => {
+  const updateField = <K extends keyof RegistrationForm>(field: K, value: RegistrationForm[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -278,7 +278,7 @@ export default function RegistrationFormComponent({
                     </label>
                     <select
                       value={formData.travel_purpose}
-                      onChange={(e) => updateField('travel_purpose', e.target.value)}
+                      onChange={(e) => updateField('travel_purpose', e.target.value as RegistrationForm['travel_purpose'])}
                       className="input"
                       required
                     >
@@ -505,7 +505,7 @@ export default function RegistrationFormComponent({
                     </label>
                     <select
                       value={formData.payment_method}
-                      onChange={(e) => updateField('payment_method', e.target.value)}
+                      onChange={(e) => updateField('payment_method', e.target.value as RegistrationForm['payment_method'])}
                       className="input"
                       required
                     >
@@ -522,7 +522,7 @@ export default function RegistrationFormComponent({
                     </label>
                     <select
                       value={formData.payment_status}
-                      onChange={(e) => updateField('payment_status', e.target.value)}
+                      onChange={(e) => updateField('payment_status', e.target.value as RegistrationForm['payment_status'])}
                       className="input"
                       required
                     >

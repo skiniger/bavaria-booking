@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { reservationsAPI, guestsAPI, tablesAPI } from '../../services/api';
 import type { Table, Guest, Reservation } from '../../types';
@@ -18,8 +18,8 @@ export default function ReservationForm({
   onClose,
   selectedTable,
   selectedDate,
-  editReservation,
 }: ReservationFormProps) {
+  // TODO: editReservation wird noch nicht zum Vorbefüllen genutzt (Bearbeiten bestehender Reservierungen).
   const queryClient = useQueryClient();
 
   // Form State
@@ -500,7 +500,7 @@ export default function ReservationForm({
                   onChange={(e) =>
                     setReservationData({
                       ...reservationData,
-                      payment_method: e.target.value as any,
+                      payment_method: e.target.value as 'cash' | 'ec' | 'credit_card' | 'invoice' | '',
                     })
                   }
                   className="input"

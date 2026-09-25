@@ -9,7 +9,7 @@ interface UseApiCallOptions<T> {
   showErrorToast?: boolean;
 }
 
-export function useApiCall<T = any>() {
+export function useApiCall<T = unknown>() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<T | null>(null);

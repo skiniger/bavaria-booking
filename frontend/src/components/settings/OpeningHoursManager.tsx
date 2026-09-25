@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, MapPin, Save } from 'lucide-react';
 import { openingHoursAPI } from '../../services/api';
 import { areasAPI } from '../../services/api';
-import { OpeningHours, Area } from '../../types';
+import type { OpeningHours } from '../../types';
 
 const WEEKDAYS = [
   { value: 0, label: 'Montag' },
@@ -14,6 +14,74 @@ const WEEKDAYS = [
   { value: 5, label: 'Samstag' },
   { value: 6, label: 'Sonntag' },
 ];
+
+interface DayRowProps {
+  value: number;
+  label: string;
+  openingHour?: OpeningHours;
+  onSave: (weekday: number, isClosed: boolean, openTime?: string, closeTime?: string) => void;
+  saving: boolean;
+}
+
+// Eigene Komponente statt useState im .map() der Wochentage – jeder Tag
+// braucht eigenen Zustand, aber Hooks dürfen nicht in einer Schleife stehen.
+function DayRow({ value, label, openingHour, onSave, saving }: DayRowProps) {
+  const [isClosed, setIsClosed] = useState(openingHour?.is_closed ?? false);
+  const [openTime, setOpenTime] = useState(openingHour?.open_time || '11:00');
+  const [closeTime, setCloseTime] = useState(openingHour?.close_time || '22:00');
+
+  return (
+    <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+      <div className="w-32 font-medium text-gray-800">{label}</div>
+
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id={`closed-${value}`}
+          checked={isClosed}
+          onChange={(e) => setIsClosed(e.target.checked)}
+          className="h-4 w-4 text-bavaria-blue focus:ring-bavaria-blue border-gray-300 rounded"
+        />
+        <label htmlFor={`closed-${value}`} className="text-sm text-gray-700">
+          Geschlossen
+        </label>
+      </div>
+
+      {!isClosed && (
+        <>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Von:</span>
+            <input
+              type="time"
+              value={openTime}
+              onChange={(e) => setOpenTime(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-bavaria-blue"
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Bis:</span>
+            <input
+              type="time"
+              value={closeTime}
+              onChange={(e) => setCloseTime(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-bavaria-blue"
+            />
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={() => onSave(value, isClosed, openTime, closeTime)}
+        disabled={saving}
+        className="ml-auto px-4 py-2 bg-bavaria-blue text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
+      >
+        <Save className="h-4 w-4" />
+        <span>Speichern</span>
+      </button>
+    </div>
+  );
+}
 
 export const OpeningHoursManager: React.FC = () => {
   const queryClient = useQueryClient();
@@ -135,67 +203,16 @@ export const OpeningHoursManager: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {WEEKDAYS.map(({ value, label }) => {
-                const oh = getOpeningHour(value);
-                const [isClosed, setIsClosed] = useState(oh?.is_closed ?? false);
-                const [openTime, setOpenTime] = useState(oh?.open_time || '11:00');
-                const [closeTime, setCloseTime] = useState(oh?.close_time || '22:00');
-
-                return (
-                  <div
-                    key={value}
-                    className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="w-32 font-medium text-gray-800">{label}</div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`closed-${value}`}
-                        checked={isClosed}
-                        onChange={(e) => setIsClosed(e.target.checked)}
-                        className="h-4 w-4 text-bavaria-blue focus:ring-bavaria-blue border-gray-300 rounded"
-                      />
-                      <label htmlFor={`closed-${value}`} className="text-sm text-gray-700">
-                        Geschlossen
-                      </label>
-                    </div>
-
-                    {!isClosed && (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-600">Von:</span>
-                          <input
-                            type="time"
-                            value={openTime}
-                            onChange={(e) => setOpenTime(e.target.value)}
-                            className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-bavaria-blue"
-                          />
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-600">Bis:</span>
-                          <input
-                            type="time"
-                            value={closeTime}
-                            onChange={(e) => setCloseTime(e.target.value)}
-                            className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-bavaria-blue"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    <button
-                      onClick={() => handleSave(value, isClosed, openTime, closeTime)}
-                      disabled={saveMutation.isPending}
-                      className="ml-auto px-4 py-2 bg-bavaria-blue text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                    >
-                      <Save className="h-4 w-4" />
-                      <span>Speichern</span>
-                    </button>
-                  </div>
-                );
-              })}
+              {WEEKDAYS.map(({ value, label }) => (
+                <DayRow
+                  key={value}
+                  value={value}
+                  label={label}
+                  openingHour={getOpeningHour(value)}
+                  onSave={handleSave}
+                  saving={saveMutation.isPending}
+                />
+              ))}
             </div>
           )}
         </div>

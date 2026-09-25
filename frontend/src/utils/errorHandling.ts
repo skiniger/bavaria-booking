@@ -4,7 +4,7 @@ import type { ToastType } from '../store/useStore';
 export interface ApiError {
   message: string;
   status?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export function parseApiError(error: unknown): ApiError {

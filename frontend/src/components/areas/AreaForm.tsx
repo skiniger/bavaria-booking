@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MapPin, X, Save } from 'lucide-react';
 import { areasAPI } from '../../services/api';
-import { Area } from '../../types';
+import type { Area, AreaColor } from '../../types';
 
 interface AreaFormProps {
   onClose: () => void;
@@ -86,7 +86,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
     }
   };
 
-  const availableColors = [
+  const availableColors: { value: AreaColor; label: string; class: string }[] = [
     { value: 'blue', label: 'Blau', class: 'bg-bavaria-blue' },
     { value: 'green', label: 'Grün', class: 'bg-bavaria-green' },
     { value: 'yellow', label: 'Gelb', class: 'bg-bavaria-yellow' },

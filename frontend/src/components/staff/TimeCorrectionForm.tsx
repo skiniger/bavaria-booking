@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit, X, AlertTriangle, Save } from 'lucide-react';
 import { employeesAPI, timeTrackingAPI } from '../../services/api';
-import { TimeTracking, Employee } from '../../types';
-import { format, differenceInHours, differenceInMinutes } from 'date-fns';
+import type { TimeTracking, Employee } from '../../types';
+import { format, differenceInMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface TimeCorrectionFormProps {
@@ -43,8 +43,8 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
   // Initialize form when tracking is selected
   useEffect(() => {
     if (tracking) {
-      setClockIn(tracking.clock_in ? format(new Date(tracking.clock_in), "yyyy-MM-dd'T'HH:mm") : '');
-      setClockOut(tracking.clock_out ? format(new Date(tracking.clock_out), "yyyy-MM-dd'T'HH:mm") : '');
+      setClockIn(tracking.check_in ? format(new Date(tracking.check_in), "yyyy-MM-dd'T'HH:mm") : '');
+      setClockOut(tracking.check_out ? format(new Date(tracking.check_out), "yyyy-MM-dd'T'HH:mm") : '');
       setBreakMinutes(tracking.break_minutes || 0);
     }
   }, [tracking]);
@@ -87,18 +87,18 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
       return;
     }
 
-    // Validate that clock_out is after clock_in
+    // Validate that check_out is after check_in
     if (clockOut && new Date(clockOut) <= new Date(clockIn)) {
       alert('Ausstempelzeit muss nach der Einstempelzeit liegen');
       return;
     }
 
     updateMutation.mutate({
-      clock_in: new Date(clockIn).toISOString(),
-      clock_out: clockOut ? new Date(clockOut).toISOString() : undefined,
+      check_in: new Date(clockIn).toISOString(),
+      check_out: clockOut ? new Date(clockOut).toISOString() : undefined,
       break_minutes: breakMinutes || 0,
-      notes: tracking?.notes
-        ? `${tracking.notes}\n\n[KORREKTUR] ${correctionReason}`
+      correction_note: tracking?.correction_note
+        ? `${tracking.correction_note}\n\n[KORREKTUR] ${correctionReason}`
         : `[KORREKTUR] ${correctionReason}`,
     });
   };
@@ -156,8 +156,8 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                     const emp = employees.find(e => e.id === t.employee);
                     return (
                       <option key={t.id} value={t.id}>
-                        {emp?.first_name} {emp?.last_name} - {format(new Date(t.clock_in), 'dd.MM.yyyy HH:mm', { locale: de })}
-                        {t.clock_out && ` bis ${format(new Date(t.clock_out), 'HH:mm', { locale: de })}`}
+                        {emp?.first_name} {emp?.last_name} - {format(new Date(t.check_in), 'dd.MM.yyyy HH:mm', { locale: de })}
+                        {t.check_out && ` bis ${format(new Date(t.check_out), 'HH:mm', { locale: de })}`}
                       </option>
                     );
                   })}
@@ -191,14 +191,14 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                     <div>
                       <p className="text-sm text-gray-600">Einstempelzeit</p>
                       <p className="font-medium text-gray-800">
-                        {tracking.clock_in && format(new Date(tracking.clock_in), 'dd.MM.yyyy HH:mm', { locale: de })}
+                        {tracking.check_in && format(new Date(tracking.check_in), 'dd.MM.yyyy HH:mm', { locale: de })}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Ausstempelzeit</p>
                       <p className="font-medium text-gray-800">
-                        {tracking.clock_out
-                          ? format(new Date(tracking.clock_out), 'dd.MM.yyyy HH:mm', { locale: de })
+                        {tracking.check_out
+                          ? format(new Date(tracking.check_out), 'dd.MM.yyyy HH:mm', { locale: de })
                           : 'Noch nicht ausgestempelt'}
                       </p>
                     </div>

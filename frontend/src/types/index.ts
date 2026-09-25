@@ -1,11 +1,17 @@
 // BAVARIABOOKINGX - TypeScript Type Definitions
 
+export type AreaColor = 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange' | 'pink' | 'indigo';
+
 export interface Area {
   id: string;
   name: string;
   description?: string;
   total_capacity: number;
   color_code: string;
+  color: AreaColor;
+  location?: string;
+  layout_width: number;
+  layout_height: number;
   is_active: boolean;
   allows_combinations: boolean;
   created_at: string;
@@ -26,6 +32,7 @@ export interface Table {
   is_combinable: boolean;
   position_x: number;
   position_y: number;
+  rotation: number;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -104,6 +111,7 @@ export interface TimeTracking {
   employee_detail?: Employee;
   check_in: string;
   check_out?: string;
+  break_minutes: number;
   auto_logout: boolean;
   manual_correction: boolean;
   correction_note?: string;
@@ -212,7 +220,7 @@ export interface SystemSettings {
   gdpr_timetracking_retention_years: number;
 
   // Deprecated
-  opening_hours?: Record<string, any>;
+  opening_hours?: Record<string, unknown>;
 
   created_at: string;
   updated_at: string;
@@ -276,7 +284,7 @@ export interface ChatMessage {
   conversation: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -336,7 +344,7 @@ export interface CapacityRecommendation {
   recommendation_text: string;
 
   // Basis
-  based_on_data: Record<string, any>;
+  based_on_data: Record<string, unknown>;
 
   is_applied: boolean;
   applied_at?: string;

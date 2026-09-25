@@ -251,7 +251,7 @@ export default function RegistrationFormDetails({
               <div className="flex justify-between">
                 <span>Übernachtung ({form.nights} × {form.room_price_per_night.toFixed(2)} €):</span>
                 <span className="font-medium">
-                  {(form.nights || 0) * (form.room_price_per_night || 0).toFixed(2)} €
+                  {((form.nights || 0) * (form.room_price_per_night || 0)).toFixed(2)} €
                 </span>
               </div>
               {form.breakfast_included && (
