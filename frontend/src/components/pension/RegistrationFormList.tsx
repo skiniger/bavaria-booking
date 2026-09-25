@@ -26,7 +26,7 @@ export default function RegistrationFormList({
   const { data: forms = [], isLoading } = useQuery({
     queryKey: ['registration-forms', statusFilter, dateFrom, dateTo],
     queryFn: () => {
-      const params: any = {};
+      const params: { status?: string; date_from?: string; date_to?: string } = {};
       if (statusFilter !== 'all') params.status = statusFilter;
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;

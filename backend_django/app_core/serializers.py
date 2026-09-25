@@ -32,7 +32,8 @@ class TableSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Table
-        fields = ['id', 'area', 'area_name', 'table_number', 'capacity', 'status', 'is_reservable', 'notes', 'created_at', 'updated_at']
+        fields = ['id', 'area', 'area_name', 'table_number', 'capacity', 'status', 'is_reservable',
+                  'is_combinable', 'position_x', 'position_y', 'rotation', 'notes', 'created_at', 'updated_at']
         read_only_fields = ['area_name']
 
     def validate(self, data):

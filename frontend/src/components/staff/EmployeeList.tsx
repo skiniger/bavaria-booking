@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Search, Plus, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
 import { employeesAPI } from '../../services/api';
-import { Employee } from '../../types';
+import type { Employee } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -52,7 +52,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole = !roleFilter || emp.role === roleFilter;
-    const matchesStatus = !statusFilter || emp.is_active.toString() === statusFilter;
+    const matchesStatus = !statusFilter || emp.is_active_employee.toString() === statusFilter;
 
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -207,10 +207,10 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                       <p className="text-sm text-gray-600">{employee.employee_number}</p>
                     </div>
                   </div>
-                  {employee.is_active ? (
-                    <UserCheck className="h-5 w-5 text-bavaria-green" title="Aktiv" />
+                  {employee.is_active_employee ? (
+                    <span title="Aktiv"><UserCheck className="h-5 w-5 text-bavaria-green" /></span>
                   ) : (
-                    <UserX className="h-5 w-5 text-bavaria-red" title="Inaktiv" />
+                    <span title="Inaktiv"><UserX className="h-5 w-5 text-bavaria-red" /></span>
                   )}
                 </div>
 
@@ -235,11 +235,11 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                     </div>
                   )}
 
-                  {employee.hire_date && (
+                  {employee.date_joined && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Eintrittsdatum</p>
                       <p className="text-sm text-gray-800">
-                        {format(new Date(employee.hire_date), 'dd.MM.yyyy', { locale: de })}
+                        {format(new Date(employee.date_joined), 'dd.MM.yyyy', { locale: de })}
                       </p>
                     </div>
                   )}
@@ -291,7 +291,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-bavaria-green">
           <p className="text-sm text-gray-600">Aktiv</p>
           <p className="text-3xl font-bold text-gray-800">
-            {employees.filter(e => e.is_active).length}
+            {employees.filter(e => e.is_active_employee).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-bavaria-yellow">
@@ -303,7 +303,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-bavaria-red">
           <p className="text-sm text-gray-600">Inaktiv</p>
           <p className="text-3xl font-bold text-gray-800">
-            {employees.filter(e => !e.is_active).length}
+            {employees.filter(e => !e.is_active_employee).length}
           </p>
         </div>
       </div>

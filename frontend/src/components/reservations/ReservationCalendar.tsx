@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reservationsAPI } from '../../services/api';
 import type { Reservation } from '../../types';

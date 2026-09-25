@@ -42,9 +42,34 @@ export const authAPI = {
 
 export const AUTH_CHECK_EVENT = 'bbx:auth-check';
 
+interface DrfPage<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+function isDrfPage(data: unknown): data is DrfPage<unknown> {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray((data as { results?: unknown }).results) &&
+    typeof (data as { count?: unknown }).count === 'number'
+  );
+}
+
 // Interceptor für Fehlerbehandlung
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // DRF paginiert jede Listen-Antwort ({count, next, previous, results}).
+    // Alle *API.getAll()-Aufrufe hier sind aber als T[] typisiert und werden
+    // so im ganzen Frontend genutzt (z. B. `areas.map(...)`) – deshalb hier
+    // zentral auf das nackte Array auspacken, statt an jeder Aufrufstelle.
+    if (isDrfPage(response.data)) {
+      response.data = response.data.results;
+    }
+    return response;
+  },
   (error) => {
     console.error('API Error:', error);
     // Sitzung abgelaufen/abgemeldet → App prüft den Login-Status neu.
@@ -118,11 +143,11 @@ export const reservationsAPI = {
     window.open(`${API_BASE_URL}/reservations/${id}/export-pdf/`, '_blank');
   },
   exportListPDF: (params?: { date_from?: string; date_to?: string }) => {
-    const queryString = new URLSearchParams(params as any).toString();
+    const queryString = new URLSearchParams(params as Record<string, string>).toString();
     window.open(`${API_BASE_URL}/reservations/export-pdf/${queryString ? '?' + queryString : ''}`, '_blank');
   },
   exportCSV: (params?: { date_from?: string; date_to?: string }) => {
-    const queryString = new URLSearchParams(params as any).toString();
+    const queryString = new URLSearchParams(params as Record<string, string>).toString();
     window.open(`${API_BASE_URL}/reservations/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
   },
 };
@@ -147,7 +172,7 @@ export const timeTrackingAPI = {
   update: (id: string, data: Partial<TimeTracking>) => api.patch<TimeTracking>(`/time-tracking/${id}/`, data),
   delete: (id: string) => api.delete(`/time-tracking/${id}/`),
   exportCSV: (params?: { employee_id?: string; date_from?: string; date_to?: string }) => {
-    const queryString = new URLSearchParams(params as any).toString();
+    const queryString = new URLSearchParams(params as Record<string, string>).toString();
     window.open(`${API_BASE_URL}/time-tracking/export-csv/${queryString ? '?' + queryString : ''}`, '_blank');
   },
 };

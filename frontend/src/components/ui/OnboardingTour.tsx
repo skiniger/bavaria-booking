@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ONBOARDING_TOUR_STORAGE_KEY } from '../../utils/onboardingTour';
 
 interface TourStep {
   title: string;
@@ -64,8 +65,6 @@ const tourSteps: TourStep[] = [
   },
 ];
 
-const STORAGE_KEY = 'bavariabooking_tour_completed';
-
 export default function OnboardingTour() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -73,7 +72,7 @@ export default function OnboardingTour() {
 
   useEffect(() => {
     // Check if tour has been completed
-    const tourCompleted = localStorage.getItem(STORAGE_KEY);
+    const tourCompleted = localStorage.getItem(ONBOARDING_TOUR_STORAGE_KEY);
     if (!tourCompleted) {
       // Show tour after a short delay
       setTimeout(() => setIsVisible(true), 1000);
@@ -107,7 +106,7 @@ export default function OnboardingTour() {
   };
 
   const completeTour = () => {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    localStorage.setItem(ONBOARDING_TOUR_STORAGE_KEY, 'true');
     setIsVisible(false);
   };
 
@@ -116,7 +115,7 @@ export default function OnboardingTour() {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Ctrl+Shift+T to restart tour
       if (e.ctrlKey && e.shiftKey && e.key === 'T') {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(ONBOARDING_TOUR_STORAGE_KEY);
         setCurrentStep(0);
         setIsVisible(true);
       }
@@ -268,8 +267,3 @@ export default function OnboardingTour() {
   );
 }
 
-// Export helper to reset tour
-export const resetOnboardingTour = () => {
-  localStorage.removeItem(STORAGE_KEY);
-  window.location.reload();
-};

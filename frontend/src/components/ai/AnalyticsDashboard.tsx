@@ -8,7 +8,7 @@ import { TrendingUp, Users, Calendar, DollarSign, AlertCircle, Lightbulb, Refres
 import { analyticsSnapshotsAPI, analyticsAPI } from '../../services/api';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { AnalyticsSnapshot, OccupancyTrend } from '../../types';
+import type { OccupancyTrend } from '../../types';
 
 const COLORS = ['#0066B2', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -241,12 +241,12 @@ export const AnalyticsDashboard: React.FC = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                label={({ name, percent }: { name?: string; percent?: number }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {reservationStatusData.map((entry, index) => (
+                {reservationStatusData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

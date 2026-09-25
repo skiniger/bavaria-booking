@@ -11,6 +11,22 @@ class Area(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="Beschreibung")
     total_capacity = models.PositiveIntegerField(default=0, verbose_name="Gesamtkapazität")
     color_code = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbcode")
+    color = models.CharField(
+        max_length=20,
+        choices=[
+            ('blue', 'Blau'), ('green', 'Grün'), ('yellow', 'Gelb'), ('red', 'Rot'),
+            ('purple', 'Lila'), ('orange', 'Orange'), ('pink', 'Pink'), ('indigo', 'Indigo'),
+        ],
+        default='blue',
+        verbose_name="Anzeigefarbe",
+    )
+    location = models.CharField(max_length=100, blank=True, verbose_name="Lage (z. B. Erdgeschoss)")
+    layout_width = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(5)], verbose_name="Layout-Breite (Raster)",
+    )
+    layout_height = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(5)], verbose_name="Layout-Höhe (Raster)",
+    )
     is_active = models.BooleanField(default=True, verbose_name="Aktiv")
     allows_combinations = models.BooleanField(default=True, verbose_name="Tischkombinationen erlaubt")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,6 +61,7 @@ class Table(models.Model):
     is_combinable = models.BooleanField(default=False, verbose_name="Kombinierbar")
     position_x = models.IntegerField(default=0, verbose_name="Position X")
     position_y = models.IntegerField(default=0, verbose_name="Position Y")
+    rotation = models.PositiveIntegerField(default=0, verbose_name="Drehung (Grad)")
     notes = models.TextField(blank=True, null=True, verbose_name="Notizen")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -233,6 +250,7 @@ class TimeTracking(models.Model):
     auto_logout = models.BooleanField(default=False, verbose_name="Auto-Logout")
     manual_correction = models.BooleanField(default=False, verbose_name="Manuelle Korrektur")
     correction_note = models.TextField(blank=True, null=True, verbose_name="Korrektur Notiz")
+    break_minutes = models.PositiveIntegerField(default=0, verbose_name="Pause (Minuten)")
     total_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Gesamtstunden")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

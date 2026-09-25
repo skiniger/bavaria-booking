@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Mail, Shield, Database, Save, HelpCircle, RotateCcw } from 'lucide-react';
 import { systemSettingsAPI } from '../../services/api';
-import { SystemSettings } from '../../types';
+import type { SystemSettings } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { resetOnboardingTour } from '../ui/OnboardingTour';
+import { resetOnboardingTour } from '../../utils/onboardingTour';
 
 export const AdvancedSettings: React.FC = () => {
   const queryClient = useQueryClient();

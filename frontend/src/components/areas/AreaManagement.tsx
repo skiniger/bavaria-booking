@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Plus, Edit, Trash2, Grid, Eye, EyeOff } from 'lucide-react';
 import { areasAPI } from '../../services/api';
-import { Area } from '../../types';
+import type { Area } from '../../types';
 
 interface AreaManagementProps {
   onEditArea?: (area: Area) => void;
@@ -162,7 +162,7 @@ export const AreaManagement: React.FC<AreaManagementProps> = ({
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Tische</p>
                     <p className="text-2xl font-bold text-bavaria-green">
-                      {area.table_count || 0}
+                      {area.tables_count || 0}
                     </p>
                     <p className="text-xs text-gray-500">Gesamt</p>
                   </div>

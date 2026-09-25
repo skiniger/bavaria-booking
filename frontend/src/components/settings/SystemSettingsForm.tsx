@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Save, AlertCircle } from 'lucide-react';
 import { systemSettingsAPI } from '../../services/api';
-import { SystemSettings } from '../../types';
+import type { SystemSettings } from '../../types';
 
 export const SystemSettingsForm: React.FC = () => {
   const queryClient = useQueryClient();

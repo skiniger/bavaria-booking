@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Grid, ZoomIn, ZoomOut, Move, Plus, Save, RotateCw, Trash2 } from 'lucide-react';
+import { Grid, ZoomIn, ZoomOut, RotateCw, Trash2 } from 'lucide-react';
 import { areasAPI, tablesAPI } from '../../services/api';
-import { Area, Table } from '../../types';
+import type { Area, Table } from '../../types';
 
 interface TableLayoutEditorProps {
   areaId: string;
@@ -36,7 +36,7 @@ export const TableLayoutEditor: React.FC<TableLayoutEditorProps> = ({ areaId, on
   });
 
   // Fetch tables
-  const { data: tables = [], isLoading: tablesLoading } = useQuery<Table[]>({
+  const { data: tables = [] } = useQuery<Table[]>({
     queryKey: ['tables', areaId],
     queryFn: async () => {
       const response = await tablesAPI.getAll(areaId);
