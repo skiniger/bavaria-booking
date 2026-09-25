@@ -5,6 +5,9 @@ import { useStore } from './store/useStore';
 import { useKeyboardShortcuts, type KeyboardShortcut } from './hooks/useKeyboardShortcuts';
 import KeyboardShortcutsDialog from './components/ui/KeyboardShortcutsDialog';
 import OnboardingTour from './components/ui/OnboardingTour';
+import LoadingSpinner from './components/ui/LoadingSpinner';
+import LoginForm from './components/LoginForm';
+import { authAPI, AUTH_CHECK_EVENT, type AuthUser } from './services/api';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -79,6 +82,25 @@ function AppContent() {
 
 function App() {
   const { setIsOnline } = useStore();
+  // undefined = wird geprüft, null = nicht angemeldet
+  const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
+
+  useEffect(() => {
+    const checkAuth = () =>
+      authAPI
+        .me()
+        .then(({ data }) => setUser(data))
+        .catch(() => {
+          setUser(null);
+          queryClient.clear();
+        });
+
+    // Erst CSRF-Cookie holen, damit spätere POSTs signiert werden können.
+    authAPI.getCsrfCookie().catch(() => undefined).finally(checkAuth);
+
+    window.addEventListener(AUTH_CHECK_EVENT, checkAuth);
+    return () => window.removeEventListener(AUTH_CHECK_EVENT, checkAuth);
+  }, []);
 
   useEffect(() => {
     // Online/Offline Listener
@@ -93,6 +115,13 @@ function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, [setIsOnline]);
+
+  if (user === undefined) {
+    return <LoadingSpinner fullScreen text="Anmeldung wird geprüft …" />;
+  }
+  if (user === null) {
+    return <LoginForm onLoggedIn={setUser} />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -3,8 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import {
   Home, Calendar, Hotel, Users, Grid, Settings as SettingsIcon,
-  Wifi, WifiOff, Bot, TrendingUp, Zap, Menu, X, Keyboard
+  Wifi, WifiOff, Bot, TrendingUp, Zap, Menu, X, Keyboard, LogOut
 } from 'lucide-react';
+import { authAPI, AUTH_CHECK_EVENT } from '../services/api';
 import ToastContainer from './ui/Toast';
 import SkipLink from './ui/SkipLink';
 
@@ -109,6 +110,21 @@ export default function Layout({ children }: LayoutProps) {
                   year: 'numeric',
                 })}
               </span>
+
+              <button
+                onClick={async () => {
+                  try {
+                    await authAPI.logout();
+                  } finally {
+                    window.dispatchEvent(new Event(AUTH_CHECK_EVENT));
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Abmelden"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Abmelden</span>
+              </button>
             </div>
           </div>
         </div>

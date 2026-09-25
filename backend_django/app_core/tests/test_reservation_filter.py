@@ -4,8 +4,19 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
+
 from app_core.models import ReservationRequest, Reservation
 from app_core.services.reservation_filter import score_submission, RISK_SCORE_THRESHOLD
+
+
+def login_staff(client):
+    """Meldet einen Mitarbeiter an – Freigabe/Ablehnung/Liste erfordern Login."""
+    user = get_user_model().objects.create_user(
+        username='personal', password='geheim-123', employee_number='EMP-T1',
+    )
+    client.force_login(user)
+    return user
 
 
 class ScoreSubmissionTests(TestCase):
@@ -109,6 +120,7 @@ class ReservationRequestEndpointTests(TestCase):
             risk_reasons=['manuell zu prüfen'],
         )
         approve_url = reverse('reservation-request-approve', args=[req.id])
+        login_staff(self.client)
         response = self.client.post(approve_url)
         self.assertEqual(response.status_code, 200, response.content)
         req.refresh_from_db()
@@ -171,6 +183,8 @@ class ReservationRequestHardeningTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_update_and_delete_are_not_allowed(self):
+        # Auch angemeldetes Personal darf gescorte Anfragen nicht ändern/löschen.
+        login_staff(self.client)
         req = self._pending()
         detail_url = reverse('reservation-request-detail', args=[req.id])
         self.assertEqual(self.client.patch(detail_url, {"message": "harmlos"},
@@ -195,6 +209,7 @@ class ReservationRequestHardeningTests(TestCase):
         self.assertEqual(ReservationRequest.objects.filter(status='pending_review').count(), 3)
 
     def test_approve_twice_creates_single_reservation(self):
+        login_staff(self.client)
         req = self._pending()
         url = reverse('reservation-request-approve', args=[req.id])
         self.assertEqual(self.client.post(url).status_code, 200)
@@ -202,6 +217,7 @@ class ReservationRequestHardeningTests(TestCase):
         self.assertEqual(Reservation.objects.count(), 1)
 
     def test_rejected_cannot_be_approved(self):
+        login_staff(self.client)
         req = self._pending()
         self.assertEqual(self.client.post(reverse('reservation-request-reject', args=[req.id])).status_code, 200)
         self.assertEqual(self.client.post(reverse('reservation-request-approve', args=[req.id])).status_code, 400)
@@ -211,6 +227,17 @@ class ReservationRequestHardeningTests(TestCase):
 
     def test_auto_approved_cannot_be_approved_again(self):
         response = self.client.post(self.list_url, self.payload, content_type='application/json')
+        login_staff(self.client)
         url = reverse('reservation-request-approve', args=[response.data['id']])
         self.assertEqual(self.client.post(url).status_code, 400)
         self.assertEqual(Reservation.objects.count(), 1)
+
+    def test_staff_actions_require_login(self):
+        req = self._pending()
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)
+        self.assertEqual(self.client.get(reverse('reservation-request-detail', args=[req.id])).status_code, 403)
+        self.assertEqual(self.client.post(reverse('reservation-request-approve', args=[req.id])).status_code, 403)
+        self.assertEqual(self.client.post(reverse('reservation-request-reject', args=[req.id])).status_code, 403)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'pending_review')
+        self.assertEqual(Reservation.objects.count(), 0)

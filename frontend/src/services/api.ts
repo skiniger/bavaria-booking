@@ -16,13 +16,43 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  // Django-CSRF: Token aus dem csrftoken-Cookie als Header mitschicken –
+  // auch cross-origin (Frontend und Backend laufen auf verschiedenen Ports).
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
+  withXSRFToken: true,
 });
+
+// ===== AUTH =====
+export interface AuthUser {
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  is_staff: boolean;
+}
+
+export const authAPI = {
+  getCsrfCookie: () => api.get('/auth/csrf/'),
+  login: (username: string, password: string) =>
+    api.post<AuthUser>('/auth/login/', { username, password }),
+  logout: () => api.post('/auth/logout/'),
+  me: () => api.get<AuthUser>('/auth/me/'),
+};
+
+export const AUTH_CHECK_EVENT = 'bbx:auth-check';
 
 // Interceptor für Fehlerbehandlung
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error);
+    // Sitzung abgelaufen/abgemeldet → App prüft den Login-Status neu.
+    const status = error?.response?.status;
+    const url: string = error?.config?.url ?? '';
+    if ((status === 401 || status === 403) && !url.startsWith('/auth/')) {
+      window.dispatchEvent(new Event(AUTH_CHECK_EVENT));
+    }
     return Promise.reject(error);
   }
 );

@@ -10,6 +10,7 @@ from .views import (
     AnalyticsSnapshotViewSet, CapacityRecommendationViewSet, AnalyticsAPIViewSet,
     ReservationRequestViewSet
 )
+from .auth_views import CsrfCookieView, LoginView, LogoutView, MeView
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -45,5 +46,9 @@ router.register(r'analytics', AnalyticsAPIViewSet, basename='analytics')
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
+    path('auth/csrf/', CsrfCookieView.as_view(), name='auth-csrf'),
+    path('auth/login/', LoginView.as_view(), name='auth-login'),
+    path('auth/logout/', LogoutView.as_view(), name='auth-logout'),
+    path('auth/me/', MeView.as_view(), name='auth-me'),
     path('', include(router.urls)),
 ]
