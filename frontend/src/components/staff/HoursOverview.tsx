@@ -168,6 +168,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
               Mitarbeiter
             </label>
             <select
+              autoComplete="off"
               value={selectedEmployee}
               onChange={(e) => setSelectedEmployee(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue focus:border-transparent"
@@ -187,6 +188,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
               Von
             </label>
             <input
+              autoComplete="off"
               type="date"
               value={dateFrom}
               onChange={(e) => {
@@ -203,6 +205,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
               Bis
             </label>
             <input
+              autoComplete="off"
               type="date"
               value={dateTo}
               onChange={(e) => {

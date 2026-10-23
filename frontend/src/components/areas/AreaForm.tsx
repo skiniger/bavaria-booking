@@ -115,13 +115,14 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form autoComplete="off" onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Name *
             </label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -139,6 +140,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
               Beschreibung
             </label>
             <textarea
+              autoComplete="off"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
@@ -178,6 +180,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
               Standort
             </label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -195,6 +198,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Breite *</label>
                 <input
+                  autoComplete="off"
                   type="number"
                   min="5"
                   max="30"
@@ -213,6 +217,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Höhe *</label>
                 <input
+                  autoComplete="off"
                   type="number"
                   min="5"
                   max="30"

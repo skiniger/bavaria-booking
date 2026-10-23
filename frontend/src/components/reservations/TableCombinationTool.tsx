@@ -107,6 +107,7 @@ export default function TableCombinationTool({
                     Name der Kombination
                   </label>
                   <input
+                    autoComplete="off"
                     type="text"
                     value={combinationName}
                     onChange={(e) => setCombinationName(e.target.value)}

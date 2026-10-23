@@ -174,7 +174,7 @@ export default function RegistrationFormComponent({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form autoComplete="off" onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Guest Information */}
           {selectedGuest && (
             <div className="card bg-bavaria-blue bg-opacity-10">
@@ -218,6 +218,7 @@ export default function RegistrationFormComponent({
                       Anreisedatum *
                     </label>
                     <input
+                      autoComplete="off"
                       type="date"
                       value={formData.arrival_date}
                       onChange={(e) => updateField('arrival_date', e.target.value)}
@@ -231,6 +232,7 @@ export default function RegistrationFormComponent({
                       Abreisedatum *
                     </label>
                     <input
+                      autoComplete="off"
                       type="date"
                       value={formData.departure_date}
                       onChange={(e) => updateField('departure_date', e.target.value)}
@@ -245,6 +247,7 @@ export default function RegistrationFormComponent({
                       Zimmernummer *
                     </label>
                     <input
+                      autoComplete="off"
                       type="text"
                       value={formData.room_number}
                       onChange={(e) => updateField('room_number', e.target.value)}
@@ -277,6 +280,7 @@ export default function RegistrationFormComponent({
                       Zweck des Aufenthalts *
                     </label>
                     <select
+                      autoComplete="off"
                       value={formData.travel_purpose}
                       onChange={(e) => updateField('travel_purpose', e.target.value as RegistrationForm['travel_purpose'])}
                       className="input"
@@ -294,6 +298,7 @@ export default function RegistrationFormComponent({
                           Firmenname
                         </label>
                         <input
+                          autoComplete="off"
                           type="text"
                           value={formData.company_name}
                           onChange={(e) => updateField('company_name', e.target.value)}
@@ -307,6 +312,7 @@ export default function RegistrationFormComponent({
                           Firmenadresse
                         </label>
                         <textarea
+                          autoComplete="off"
                           value={formData.company_address}
                           onChange={(e) => updateField('company_address', e.target.value)}
                           className="input"
@@ -343,6 +349,7 @@ export default function RegistrationFormComponent({
                         Frühstückspreis pro Tag (€)
                       </label>
                       <input
+                        autoComplete="off"
                         type="number"
                         step="0.01"
                         min="0"
@@ -387,6 +394,7 @@ export default function RegistrationFormComponent({
                         Befreiungsgrund
                       </label>
                       <textarea
+                        autoComplete="off"
                         value={formData.tourist_tax_exemption_reason}
                         onChange={(e) =>
                           updateField('tourist_tax_exemption_reason', e.target.value)
@@ -404,6 +412,7 @@ export default function RegistrationFormComponent({
                         Kurtaxe pro Nacht (€)
                       </label>
                       <input
+                        autoComplete="off"
                         type="number"
                         step="0.01"
                         min="0"
@@ -435,6 +444,7 @@ export default function RegistrationFormComponent({
                       Zimmerpreis pro Nacht (€) *
                     </label>
                     <input
+                      autoComplete="off"
                       type="number"
                       step="0.01"
                       min="0"
@@ -504,6 +514,7 @@ export default function RegistrationFormComponent({
                       Zahlungsart *
                     </label>
                     <select
+                      autoComplete="off"
                       value={formData.payment_method}
                       onChange={(e) => updateField('payment_method', e.target.value as RegistrationForm['payment_method'])}
                       className="input"
@@ -521,6 +532,7 @@ export default function RegistrationFormComponent({
                       Zahlungsstatus *
                     </label>
                     <select
+                      autoComplete="off"
                       value={formData.payment_status}
                       onChange={(e) => updateField('payment_status', e.target.value as RegistrationForm['payment_status'])}
                       className="input"
@@ -542,6 +554,7 @@ export default function RegistrationFormComponent({
               Interne Notizen
             </label>
             <textarea
+              autoComplete="off"
               value={formData.notes}
               onChange={(e) => updateField('notes', e.target.value)}
               className="input"

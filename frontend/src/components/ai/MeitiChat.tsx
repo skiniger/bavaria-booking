@@ -268,6 +268,7 @@ export const MeitiChat: React.FC = () => {
           <div className="p-4 border-t border-gray-200 bg-gray-50">
             <div className="flex gap-2">
               <textarea
+                autoComplete="off"
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyDown={handleKeyPress}

@@ -147,13 +147,14 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form autoComplete="off" onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Area Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Servicebereich *
             </label>
             <select
+              autoComplete="off"
               value={formData.area}
               onChange={(e) => setFormData({ ...formData, area: e.target.value })}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-bavaria-blue focus:border-transparent ${
@@ -182,6 +183,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
               Tischnummer *
             </label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.table_number}
               onChange={(e) => setFormData({ ...formData, table_number: e.target.value })}
@@ -201,6 +203,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
               Kapazität (Anzahl Plätze) *
             </label>
             <input
+              autoComplete="off"
               type="number"
               min="1"
               max="20"
@@ -219,6 +222,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select
+              autoComplete="off"
               value={formData.status}
               onChange={(e) =>
                 setFormData({ ...formData, status: e.target.value as Table['status'] })
@@ -241,6 +245,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
               <div>
                 <label className="block text-xs text-gray-600 mb-1">X (Horizontal) *</label>
                 <input
+                  autoComplete="off"
                   type="number"
                   min="0"
                   max={selectedArea?.layout_width ? selectedArea.layout_width - 1 : 99}
@@ -259,6 +264,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Y (Vertikal) *</label>
                 <input
+                  autoComplete="off"
                   type="number"
                   min="0"
                   max={selectedArea?.layout_height ? selectedArea.layout_height - 1 : 99}
@@ -304,6 +310,7 @@ export const TableForm: React.FC<TableFormProps> = ({ onClose, table, areaId }) 
                 className="flex-1"
               />
               <input
+                autoComplete="off"
                 type="number"
                 min="0"
                 max="359"

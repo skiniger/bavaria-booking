@@ -52,6 +52,7 @@ function DayRow({ value, label, openingHour, onSave, saving }: DayRowProps) {
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Von:</span>
             <input
+              autoComplete="off"
               type="time"
               value={openTime}
               onChange={(e) => setOpenTime(e.target.value)}
@@ -62,6 +63,7 @@ function DayRow({ value, label, openingHour, onSave, saving }: DayRowProps) {
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Bis:</span>
             <input
+              autoComplete="off"
               type="time"
               value={closeTime}
               onChange={(e) => setCloseTime(e.target.value)}
@@ -148,6 +150,7 @@ export const OpeningHoursManager: React.FC = () => {
         <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
         <p className="text-gray-500 text-lg mb-4">Wählen Sie einen Servicebereich aus</p>
         <select
+          autoComplete="off"
           value={selectedArea}
           onChange={(e) => setSelectedArea(e.target.value)}
           className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"
@@ -175,6 +178,7 @@ export const OpeningHoursManager: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800">Servicebereich</h3>
           </div>
           <select
+            autoComplete="off"
             value={selectedArea}
             onChange={(e) => setSelectedArea(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"

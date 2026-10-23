@@ -141,7 +141,7 @@ export default function PensionGuestForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form autoComplete="off" onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Personal Information */}
           <div className="card bg-gray-50">
             <h3 className="text-lg font-bold mb-4 flex items-center">
@@ -155,6 +155,7 @@ export default function PensionGuestForm({
                   Anrede *
                 </label>
                 <select
+                  autoComplete="off"
                   value={formData.salutation}
                   onChange={(e) => updateField('salutation', e.target.value as PensionGuest['salutation'])}
                   className="input"
@@ -171,6 +172,7 @@ export default function PensionGuestForm({
                   Vorname *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.first_name}
                   onChange={(e) => updateField('first_name', e.target.value)}
@@ -187,6 +189,7 @@ export default function PensionGuestForm({
                   Nachname *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.last_name}
                   onChange={(e) => updateField('last_name', e.target.value)}
@@ -205,6 +208,7 @@ export default function PensionGuestForm({
                   Geburtsdatum *
                 </label>
                 <input
+                  autoComplete="off"
                   type="date"
                   value={formData.birth_date}
                   onChange={(e) => updateField('birth_date', e.target.value)}
@@ -222,6 +226,7 @@ export default function PensionGuestForm({
                   Staatsangehörigkeit *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.nationality}
                   onChange={(e) => updateField('nationality', e.target.value)}
@@ -248,6 +253,7 @@ export default function PensionGuestForm({
                   Straße *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.street}
                   onChange={(e) => updateField('street', e.target.value)}
@@ -264,6 +270,7 @@ export default function PensionGuestForm({
                   Hausnr. *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.house_number}
                   onChange={(e) => updateField('house_number', e.target.value)}
@@ -282,6 +289,7 @@ export default function PensionGuestForm({
                   Postleitzahl *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.postal_code}
                   onChange={(e) => updateField('postal_code', e.target.value)}
@@ -298,6 +306,7 @@ export default function PensionGuestForm({
                   Ort *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.city}
                   onChange={(e) => updateField('city', e.target.value)}
@@ -314,6 +323,7 @@ export default function PensionGuestForm({
                   Land *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.country}
                   onChange={(e) => updateField('country', e.target.value)}
@@ -340,6 +350,7 @@ export default function PensionGuestForm({
                   Dokumenttyp *
                 </label>
                 <select
+                  autoComplete="off"
                   value={formData.document_type}
                   onChange={(e) => updateField('document_type', e.target.value as PensionGuest['document_type'])}
                   className="input"
@@ -356,6 +367,7 @@ export default function PensionGuestForm({
                   Dokumentnummer *
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={formData.document_number}
                   onChange={(e) => updateField('document_number', e.target.value)}
@@ -383,6 +395,7 @@ export default function PensionGuestForm({
                   Telefon
                 </label>
                 <input
+                  autoComplete="off"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => updateField('phone', e.target.value)}
@@ -396,6 +409,7 @@ export default function PensionGuestForm({
                   E-Mail
                 </label>
                 <input
+                  autoComplete="off"
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField('email', e.target.value)}

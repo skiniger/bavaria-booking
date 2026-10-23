@@ -138,7 +138,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form autoComplete="off" onSubmit={handleSubmit} className="space-y-6">
             {/* Tracking Selection */}
             {!trackingId && (
               <div>
@@ -146,6 +146,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                   Zeiteintrag auswählen
                 </label>
                 <select
+                  autoComplete="off"
                   value={selectedTracking}
                   onChange={(e) => setSelectedTracking(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue focus:border-transparent"
@@ -223,6 +224,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                       Einstempelzeit *
                     </label>
                     <input
+                      autoComplete="off"
                       type="datetime-local"
                       value={clockIn}
                       onChange={(e) => setClockIn(e.target.value)}
@@ -237,6 +239,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                       Ausstempelzeit
                     </label>
                     <input
+                      autoComplete="off"
                       type="datetime-local"
                       value={clockOut}
                       onChange={(e) => setClockOut(e.target.value)}
@@ -253,6 +256,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                       Pausenzeit (Minuten)
                     </label>
                     <input
+                      autoComplete="off"
                       type="number"
                       min="0"
                       step="1"
@@ -276,6 +280,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                       Grund für die Korrektur *
                     </label>
                     <textarea
+                      autoComplete="off"
                       value={correctionReason}
                       onChange={(e) => setCorrectionReason(e.target.value)}
                       rows={4}

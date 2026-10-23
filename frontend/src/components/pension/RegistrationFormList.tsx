@@ -99,6 +99,7 @@ export default function RegistrationFormList({
               Suche
             </label>
             <input
+              autoComplete="off"
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -113,6 +114,7 @@ export default function RegistrationFormList({
               Status
             </label>
             <select
+              autoComplete="off"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="input"
@@ -129,6 +131,7 @@ export default function RegistrationFormList({
           <div>
             <label className="block text-sm font-medium mb-1">Von Datum</label>
             <input
+              autoComplete="off"
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -139,6 +142,7 @@ export default function RegistrationFormList({
           <div>
             <label className="block text-sm font-medium mb-1">Bis Datum</label>
             <input
+              autoComplete="off"
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}

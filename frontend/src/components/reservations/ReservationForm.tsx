@@ -175,7 +175,7 @@ export default function ReservationForm({
         {/* Content */}
         <div className="p-6">
           {step === 1 && (
-            <form onSubmit={handleGuestSubmit} className="space-y-4">
+            <form autoComplete="off" onSubmit={handleGuestSubmit} className="space-y-4">
               <h3 className="text-lg font-bold mb-4">Schritt 1: Gast auswählen oder anlegen</h3>
 
               {/* Guest Search */}
@@ -186,6 +186,7 @@ export default function ReservationForm({
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
+                    autoComplete="off"
                     type="tel"
                     value={searchPhone}
                     onChange={(e) => setSearchPhone(e.target.value)}
@@ -236,6 +237,7 @@ export default function ReservationForm({
                       Vorname *
                     </label>
                     <input
+                      autoComplete="off"
                       type="text"
                       required
                       value={guestData.first_name}
@@ -252,6 +254,7 @@ export default function ReservationForm({
                       Nachname *
                     </label>
                     <input
+                      autoComplete="off"
                       type="text"
                       required
                       value={guestData.last_name}
@@ -270,6 +273,7 @@ export default function ReservationForm({
                       Telefon *
                     </label>
                     <input
+                      autoComplete="off"
                       type="tel"
                       required
                       value={guestData.phone_number}
@@ -284,6 +288,7 @@ export default function ReservationForm({
                   <div>
                     <label className="block text-sm font-medium mb-1">E-Mail</label>
                     <input
+                      autoComplete="off"
                       type="email"
                       value={guestData.email}
                       onChange={(e) =>
@@ -300,6 +305,7 @@ export default function ReservationForm({
                     Allergien / Unverträglichkeiten
                   </label>
                   <textarea
+                    autoComplete="off"
                     value={guestData.allergies}
                     onChange={(e) =>
                       setGuestData({ ...guestData, allergies: e.target.value })
@@ -316,6 +322,7 @@ export default function ReservationForm({
                     Besondere Wünsche
                   </label>
                   <textarea
+                    autoComplete="off"
                     value={guestData.special_requests}
                     onChange={(e) =>
                       setGuestData({ ...guestData, special_requests: e.target.value })
@@ -360,7 +367,7 @@ export default function ReservationForm({
           )}
 
           {step === 2 && selectedGuest && (
-            <form onSubmit={handleReservationSubmit} className="space-y-4">
+            <form autoComplete="off" onSubmit={handleReservationSubmit} className="space-y-4">
               <h3 className="text-lg font-bold mb-4">Schritt 2: Reservierungsdetails</h3>
 
               {/* Guest Info */}
@@ -385,6 +392,7 @@ export default function ReservationForm({
                     Datum *
                   </label>
                   <input
+                    autoComplete="off"
                     type="date"
                     required
                     value={reservationData.reservation_date}
@@ -405,6 +413,7 @@ export default function ReservationForm({
                     Uhrzeit *
                   </label>
                   <input
+                    autoComplete="off"
                     type="time"
                     required
                     value={reservationData.reservation_time}
@@ -427,6 +436,7 @@ export default function ReservationForm({
                     Anzahl Gäste *
                   </label>
                   <input
+                    autoComplete="off"
                     type="number"
                     required
                     min="1"
@@ -447,6 +457,7 @@ export default function ReservationForm({
                     Dauer (Minuten) *
                   </label>
                   <select
+                    autoComplete="off"
                     value={reservationData.duration_minutes}
                     onChange={(e) =>
                       setReservationData({
@@ -471,6 +482,7 @@ export default function ReservationForm({
                   Tisch {selectedTable && `(vorausgewählt: ${selectedTable.table_number})`}
                 </label>
                 <select
+                  autoComplete="off"
                   value={reservationData.table}
                   onChange={(e) =>
                     setReservationData({ ...reservationData, table: e.target.value })
@@ -496,6 +508,7 @@ export default function ReservationForm({
                   Zahlungsart
                 </label>
                 <select
+                  autoComplete="off"
                   value={reservationData.payment_method}
                   onChange={(e) =>
                     setReservationData({
@@ -519,6 +532,7 @@ export default function ReservationForm({
                   Interne Notizen
                 </label>
                 <textarea
+                  autoComplete="off"
                   value={reservationData.notes}
                   onChange={(e) =>
                     setReservationData({ ...reservationData, notes: e.target.value })
