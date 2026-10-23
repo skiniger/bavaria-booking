@@ -156,6 +156,7 @@ export default function Pension() {
                   Gast suchen
                 </label>
                 <input
+                  autoComplete="off"
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

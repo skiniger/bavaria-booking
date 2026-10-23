@@ -43,7 +43,7 @@ export const AdvancedSettings: React.FC = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form autoComplete="off" onSubmit={handleSubmit} className="space-y-8">
       {/* Email Settings */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center space-x-3 mb-6">
@@ -55,6 +55,7 @@ export const AdvancedSettings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Server</label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.smtp_host || ''}
               onChange={(e) => setFormData({ ...formData, smtp_host: e.target.value })}
@@ -66,6 +67,7 @@ export const AdvancedSettings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Port</label>
             <input
+              autoComplete="off"
               type="number"
               value={formData.smtp_port || 587}
               onChange={(e) => setFormData({ ...formData, smtp_port: parseInt(e.target.value) || 587 })}
@@ -76,6 +78,7 @@ export const AdvancedSettings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Benutzername</label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.smtp_username || ''}
               onChange={(e) => setFormData({ ...formData, smtp_username: e.target.value })}
@@ -86,6 +89,7 @@ export const AdvancedSettings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
             <input
+              autoComplete="off"
               type="password"
               value={formData.smtp_password || ''}
               onChange={(e) => setFormData({ ...formData, smtp_password: e.target.value })}
@@ -96,6 +100,7 @@ export const AdvancedSettings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Absender E-Mail</label>
             <input
+              autoComplete="off"
               type="email"
               value={formData.email_from_address || ''}
               onChange={(e) => setFormData({ ...formData, email_from_address: e.target.value })}
@@ -132,6 +137,7 @@ export const AdvancedSettings: React.FC = () => {
               Einwilligungstext
             </label>
             <textarea
+              autoComplete="off"
               value={formData.gdpr_consent_text || ''}
               onChange={(e) => setFormData({ ...formData, gdpr_consent_text: e.target.value })}
               rows={4}
@@ -149,6 +155,7 @@ export const AdvancedSettings: React.FC = () => {
                 Gäste-Daten (Monate)
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="1"
                 max="120"
@@ -168,6 +175,7 @@ export const AdvancedSettings: React.FC = () => {
                 Reservierungen (Monate)
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="1"
                 max="120"
@@ -187,6 +195,7 @@ export const AdvancedSettings: React.FC = () => {
                 Zeiterfassung (Jahre)
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="1"
                 max="50"
@@ -217,6 +226,7 @@ export const AdvancedSettings: React.FC = () => {
               Backup-Frequenz (Stunden)
             </label>
             <select
+              autoComplete="off"
               value={formData.backup_frequency_hours || 8}
               onChange={(e) =>
                 setFormData({

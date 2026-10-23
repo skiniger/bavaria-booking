@@ -69,7 +69,7 @@ export const SystemSettingsForm: React.FC = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form autoComplete="off" onSubmit={handleSubmit} className="space-y-8">
       {/* Firmendaten */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center space-x-3 mb-6">
@@ -83,6 +83,7 @@ export const SystemSettingsForm: React.FC = () => {
               Firmenname *
             </label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.company_name || ''}
               onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
@@ -98,6 +99,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Straße</label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.company_street || ''}
               onChange={(e) => setFormData({ ...formData, company_street: e.target.value })}
@@ -109,6 +111,7 @@ export const SystemSettingsForm: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">PLZ</label>
               <input
+                autoComplete="off"
                 type="text"
                 value={formData.company_postal_code || ''}
                 onChange={(e) => setFormData({ ...formData, company_postal_code: e.target.value })}
@@ -118,6 +121,7 @@ export const SystemSettingsForm: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Ort</label>
               <input
+                autoComplete="off"
                 type="text"
                 value={formData.company_city || ''}
                 onChange={(e) => setFormData({ ...formData, company_city: e.target.value })}
@@ -129,6 +133,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Telefon</label>
             <input
+              autoComplete="off"
               type="tel"
               value={formData.company_phone || ''}
               onChange={(e) => setFormData({ ...formData, company_phone: e.target.value })}
@@ -139,6 +144,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">E-Mail *</label>
             <input
+              autoComplete="off"
               type="email"
               value={formData.company_email || ''}
               onChange={(e) => setFormData({ ...formData, company_email: e.target.value })}
@@ -154,6 +160,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
             <input
+              autoComplete="off"
               type="url"
               value={formData.company_website || ''}
               onChange={(e) => setFormData({ ...formData, company_website: e.target.value })}
@@ -165,6 +172,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Logo URL</label>
             <input
+              autoComplete="off"
               type="url"
               value={formData.company_logo_url || ''}
               onChange={(e) => setFormData({ ...formData, company_logo_url: e.target.value })}
@@ -176,6 +184,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Steuernummer</label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.tax_id || ''}
               onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
@@ -186,6 +195,7 @@ export const SystemSettingsForm: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">USt-ID</label>
             <input
+              autoComplete="off"
               type="text"
               value={formData.vat_id || ''}
               onChange={(e) => setFormData({ ...formData, vat_id: e.target.value })}
@@ -205,6 +215,7 @@ export const SystemSettingsForm: React.FC = () => {
               Standard Dauer (Minuten)
             </label>
             <input
+              autoComplete="off"
               type="number"
               min="30"
               max="480"
@@ -224,6 +235,7 @@ export const SystemSettingsForm: React.FC = () => {
               Vorlaufzeit (Tage)
             </label>
             <input
+              autoComplete="off"
               type="number"
               min="1"
               max="365"
@@ -243,6 +255,7 @@ export const SystemSettingsForm: React.FC = () => {
               Max. Gäste pro Reservierung
             </label>
             <input
+              autoComplete="off"
               type="number"
               min="1"
               max="100"
@@ -286,6 +299,7 @@ export const SystemSettingsForm: React.FC = () => {
                 Kurtaxe-Satz (€ pro Nacht)
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="0"
                 step="0.10"
@@ -312,6 +326,7 @@ export const SystemSettingsForm: React.FC = () => {
                 Auto-Logout (Stunden)
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="1"
                 max="72"
@@ -329,6 +344,7 @@ export const SystemSettingsForm: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Zeitzone</label>
               <select
+                autoComplete="off"
                 value={formData.timezone || 'Europe/Berlin'}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"
@@ -342,6 +358,7 @@ export const SystemSettingsForm: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Sprache</label>
               <select
+                autoComplete="off"
                 value={formData.language || 'de'}
                 onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"

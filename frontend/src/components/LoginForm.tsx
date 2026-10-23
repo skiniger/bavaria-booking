@@ -31,7 +31,12 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <ToastContainer />
-      <form onSubmit={handleSubmit} className="card w-full max-w-sm space-y-4" aria-labelledby="login-title">
+      <form
+        autoComplete="off"
+        onSubmit={handleSubmit}
+        className="card w-full max-w-sm space-y-4"
+        aria-labelledby="login-title"
+      >
         <h1 id="login-title" className="text-2xl font-bold text-bavaria-blue">BAVARIABOOKINGX</h1>
         <p className="text-sm text-gray-600">Bitte mit deinem Mitarbeiter-Konto anmelden.</p>
         <label className="block">

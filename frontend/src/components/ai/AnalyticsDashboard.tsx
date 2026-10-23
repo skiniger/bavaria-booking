@@ -140,6 +140,7 @@ export const AnalyticsDashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <select
+            autoComplete="off"
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(Number(e.target.value) as 7 | 30)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-bavaria-blue"

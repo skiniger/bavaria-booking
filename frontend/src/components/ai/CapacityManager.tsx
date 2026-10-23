@@ -121,6 +121,7 @@ export const CapacityManager: React.FC = () => {
               Servicebereich
             </label>
             <select
+              autoComplete="off"
               value={selectedAreaId}
               onChange={(e) => setSelectedAreaId(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-bavaria-blue"
@@ -139,6 +140,7 @@ export const CapacityManager: React.FC = () => {
               Datum
             </label>
             <input
+              autoComplete="off"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}

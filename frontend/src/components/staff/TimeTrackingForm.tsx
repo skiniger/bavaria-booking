@@ -116,6 +116,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
                 Mitarbeiter
               </label>
               <select
+                autoComplete="off"
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue focus:border-transparent"
@@ -179,6 +180,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
                 </div>
               </label>
               <input
+                autoComplete="off"
                 type="number"
                 min="0"
                 step="1"
@@ -199,6 +201,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
               Notizen (optional)
             </label>
             <textarea
+              autoComplete="off"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
