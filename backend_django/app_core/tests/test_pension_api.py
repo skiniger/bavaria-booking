@@ -75,6 +75,25 @@ class PensionApiTests(TestCase):
                              self.form_payload(gid, breakfast_included=False), content_type='application/json')
         self.assertEqual(Decimal(r.data['total_amount']), Decimal('187.50'))
 
+    def test_kurtaxe_exemption_sets_tax_to_zero(self):
+        """Fix 4: Befreite Gäste zahlen keine Kurtaxe, auch wenn ein Betrag mitgeschickt wird."""
+        gid = self.create_guest().data['id']
+        r = self.client.post(reverse('registration-form-list'),
+                             self.form_payload(gid, breakfast_included=False, tourist_tax_required=False,
+                                               tourist_tax_exemption_reason='Kind unter 14'),
+                             content_type='application/json')
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Decimal(r.data['tourist_tax_amount']), Decimal('0'))
+        self.assertEqual(Decimal(r.data['total_amount']), Decimal('180.00'))
+
+    def test_kurtaxe_amount_is_stay_total(self):
+        """Fix 4: tourist_tax_amount = Satz × Nächte (UI schickt 2,50 × 3 = 7,50) und wird genau einmal addiert."""
+        gid = self.create_guest().data['id']
+        r = self.client.post(reverse('registration-form-list'),
+                             self.form_payload(gid, breakfast_included=False, tourist_tax_amount='7.50'),
+                             content_type='application/json')
+        self.assertEqual(Decimal(r.data['total_amount']), Decimal('3') * Decimal('60') + Decimal('2.50') * 3)
+
     def test_status_workflow(self):
         gid = self.create_guest().data['id']
         fid = self.client.post(reverse('registration-form-list'), self.form_payload(gid),

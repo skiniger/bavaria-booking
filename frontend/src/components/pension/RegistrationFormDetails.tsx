@@ -227,7 +227,7 @@ export default function RegistrationFormDetails({
                   <span className="text-gray-600">Kurtaxe:</span>
                   <span className="font-medium">
                     {form.tourist_tax_required
-                      ? `${form.tourist_tax_amount.toFixed(2)} € / Nacht`
+                      ? `${Number(form.tourist_tax_amount).toFixed(2)} € gesamt`
                       : 'Befreit'}
                   </span>
                 </div>
@@ -264,9 +264,12 @@ export default function RegistrationFormDetails({
               )}
               {form.tourist_tax_required && (
                 <div className="flex justify-between">
-                  <span>Kurtaxe ({form.nights} × {form.tourist_tax_amount.toFixed(2)} €):</span>
+                  <span>
+                    Kurtaxe ({form.nights} ×{' '}
+                    {(form.nights ? Number(form.tourist_tax_amount) / form.nights : Number(form.tourist_tax_amount)).toFixed(2)} €):
+                  </span>
                   <span className="font-medium">
-                    {((form.nights || 0) * form.tourist_tax_amount).toFixed(2)} €
+                    {Number(form.tourist_tax_amount).toFixed(2)} €
                   </span>
                 </div>
               )}

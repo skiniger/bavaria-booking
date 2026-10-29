@@ -231,7 +231,7 @@ export default function RegistrationFormList({
 
                   {form.tourist_tax_required && (
                     <div className="mt-2 text-xs text-gray-500">
-                      Kurtaxe: {form.tourist_tax_amount.toFixed(2)} € pro Nacht
+                      Kurtaxe: {Number(form.tourist_tax_amount).toFixed(2)} € gesamt
                     </div>
                   )}
 
