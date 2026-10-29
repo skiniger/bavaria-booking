@@ -93,9 +93,8 @@ class PensionApiTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertTrue(RegistrationForm.objects.get(pk=fid).exported_to_city)
 
-    @unittest.expectedFailure
     def test_BEFUND_meldeschein_pdf_export(self):
-        """BEFUND: Meldeschein-PDF nutzt guest.guest_id (gibt es nicht) → HTTP 500."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Meldeschein-PDF nutzt guest.guest_id (gibt es nicht) → HTTP 500."""
         gid = self.create_guest().data['id']
         fid = self.client.post(reverse('registration-form-list'), self.form_payload(gid),
                                content_type='application/json').data['id']
@@ -104,13 +103,21 @@ class PensionApiTests(TestCase):
         self.assertEqual(r['Content-Type'], 'application/pdf')
         self.assertTrue(r.content.startswith(b'%PDF'))
 
-    @unittest.expectedFailure
     def test_BEFUND_pension_guest_export_csv(self):
-        """BEFUND: Pensionsgäste-CSV nutzt guest.guest_id (gibt es nicht)."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Pensionsgäste-CSV nutzt guest.guest_id (gibt es nicht)."""
         self.create_guest()
         self.client.raise_request_exception = False
         r = self.client.get(reverse('pension-guest-export-csv'))
         self.assertEqual(r.status_code, 200)
+
+    def test_pension_csv_contains_guest(self):
+        """Fix 3: Pensionsgäste-CSV enthält Gast, Hausnummer und Dokumentnummer."""
+        self.create_guest()
+        r = self.client.get(reverse('pension-guest-export-csv'))
+        body = r.content.decode('utf-8')
+        self.assertIn('Musterfrau', body)
+        self.assertIn('Dorfstr. 1', body)
+        self.assertIn('T22000129', body)
 
     def test_filter_by_status(self):
         gid = self.create_guest().data['id']

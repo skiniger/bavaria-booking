@@ -263,7 +263,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         pdf_buffer = exporter.generate_single_reservation(reservation)
 
         response = HttpResponse(pdf_buffer, content_type='application/pdf')
-        filename = f"reservierung_{reservation.reservation_id or reservation.id}.pdf"
+        filename = f"reservierung_{reservation.id}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -286,14 +286,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
         if date_from_str:
             try:
                 date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__gte=date_from)
+                queryset = queryset.filter(reservation_time__date__gte=date_from)
             except ValueError:
                 pass
 
         if date_to_str:
             try:
                 date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__lte=date_to)
+                queryset = queryset.filter(reservation_time__date__lte=date_to)
             except ValueError:
                 pass
 
@@ -327,14 +327,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
         if date_from_str:
             try:
                 date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__gte=date_from)
+                queryset = queryset.filter(reservation_time__date__gte=date_from)
             except ValueError:
                 pass
 
         if date_to_str:
             try:
                 date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__lte=date_to)
+                queryset = queryset.filter(reservation_time__date__lte=date_to)
             except ValueError:
                 pass
 

@@ -194,16 +194,16 @@ class GuestCSVExporter(CSVExporter):
         for guest in guests:
             # Get reservation count and last reservation
             reservation_count = guest.reservations.count()
-            last_reservation = guest.reservations.order_by('-date', '-time').first()
+            last_reservation = guest.reservations.order_by('-reservation_time').first()
 
             row = [
-                guest.guest_id or '',
+                str(guest.id),
                 guest.last_name or '',
                 guest.first_name or '',
                 guest.email or '',
                 guest.phone_number or '',
                 str(reservation_count),
-                self._format_date(last_reservation.date) if last_reservation else 'Keine',
+                self._format_date(timezone.localtime(last_reservation.reservation_time)) if last_reservation else 'Keine',
                 guest.allergies or '',
                 guest.special_requests or ''
             ]
@@ -256,30 +256,30 @@ class PensionGuestCSVExporter(CSVExporter):
             'Land',
             'E-Mail',
             'Telefon',
-            'Aktiv',
+            'Dokumenttyp',
+            'Dokumentnummer',
             'DSGVO Einwilligung',
-            'Notizen'
         ]
         writer.writerow(headers)
 
         # Data rows
         for guest in pension_guests:
             row = [
-                guest.guest_id or '',
+                str(guest.id),
                 guest.salutation or '',
                 guest.last_name or '',
                 guest.first_name or '',
                 self._format_date(guest.birth_date) if guest.birth_date else '',
                 guest.nationality or '',
-                guest.street or '',
+                f"{guest.street or ''} {guest.house_number or ''}".strip(),
                 guest.postal_code or '',
                 guest.city or '',
                 guest.country or 'Deutschland',
                 guest.email or '',
-                guest.phone_number or '',
-                self._format_boolean(guest.is_active),
+                guest.phone or '',
+                guest.get_document_type_display() if guest.document_type else '',
+                guest.document_number or '',
                 self._format_boolean(guest.gdpr_consent),
-                guest.notes or ''
             ]
             writer.writerow(row)
 
@@ -287,8 +287,6 @@ class PensionGuestCSVExporter(CSVExporter):
         writer.writerow([])
         writer.writerow(['ZUSAMMENFASSUNG'])
         writer.writerow(['Anzahl Gäste:', len(pension_guests)])
-        active_count = sum(1 for g in pension_guests if g.is_active)
-        writer.writerow(['Aktive Gäste:', active_count])
         writer.writerow(['Exportiert am:', self._format_datetime(timezone.now())])
 
         buffer.seek(0)
@@ -340,20 +338,21 @@ class ReservationCSVExporter(CSVExporter):
 
             # Count status occurrences
             status_counts[res.status] = status_counts.get(res.status, 0) + 1
-            total_guests += res.party_size
+            total_guests += res.number_of_guests
+            local_time = timezone.localtime(res.reservation_time)
 
             row = [
-                res.reservation_id or '',
-                self._format_date(res.date),
-                self._format_time(res.time),
+                str(res.id),
+                self._format_date(local_time),
+                self._format_time(local_time),
                 self._get_status_text(res.status),
                 f"{guest.first_name} {guest.last_name}",
                 guest.email or '',
                 guest.phone_number or '',
                 f"Tisch {res.table.table_number}" if res.table else '—',
-                str(res.party_size),
+                str(res.number_of_guests),
                 str(res.duration_minutes) if res.duration_minutes else '',
-                res.special_requests or '',
+                guest.special_requests or '',
                 guest.allergies or '',
                 res.notes or ''
             ]

@@ -116,36 +116,50 @@ class ReservationApiTests(TestCase):
         self.assertEqual(self.client.get(url, {'date': '2026-12-01'}).status_code, 400)
         self.assertEqual(self.client.get(url, dict(q, guests='viele')).status_code, 400)
 
-    @unittest.expectedFailure
     def test_BEFUND_export_pdf_single(self):
-        """BEFUND: pdf_exports nutzt reservation.reservation_id/date/time/party_size (gibt es nicht) → HTTP 500."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: pdf_exports nutzt reservation.reservation_id/date/time/party_size (gibt es nicht) → HTTP 500."""
         rid = self.post().data['id']
         r = self.client.get(reverse('reservation-export-single-pdf', args=[rid]))
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r['Content-Type'], 'application/pdf')
 
-    @unittest.expectedFailure
     def test_BEFUND_export_csv(self):
-        """BEFUND: csv_exports nutzt res.party_size/reservation_id (gibt es nicht) → HTTP 500."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: csv_exports nutzt res.party_size/reservation_id (gibt es nicht) → HTTP 500."""
         self.post()
         r = self.client.get(reverse('reservation-export-csv'))
         self.assertEqual(r.status_code, 200)
         self.assertIn('text/csv', r['Content-Type'])
 
-    @unittest.expectedFailure
     def test_BEFUND_export_list_pdf(self):
-        """BEFUND: Listen-PDF nutzt res.party_size → Fehler."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Listen-PDF nutzt res.party_size → Fehler."""
         self.post()
         self.client.raise_request_exception = False
         r = self.client.get(reverse('reservation-export-list-pdf'))
         self.assertEqual(r.status_code, 200)
 
-    @unittest.expectedFailure
     def test_BEFUND_guest_export_csv(self):
-        """BEFUND: Gäste-CSV nutzt guest.guest_id (gibt es nicht)."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Gäste-CSV nutzt guest.guest_id (gibt es nicht)."""
         self.client.raise_request_exception = False
         r = self.client.get(reverse('guest-export-csv'))
         self.assertEqual(r.status_code, 200)
+
+    def test_export_contents_and_date_filters(self):
+        """Fix 3: Exporte enthalten echte Werte (Ortszeit) und Datumsfilter laufen ohne 500."""
+        self.post(number_of_guests=3)
+        local = timezone.localtime(self.when)
+        day = local.date().isoformat()
+        r = self.client.get(reverse('reservation-export-csv'), {'date_from': day, 'date_to': day})
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode('utf-8')
+        self.assertIn('Huber', body)
+        self.assertIn(local.strftime('%d.%m.%Y'), body)
+        self.assertIn(local.strftime('%H:%M'), body)
+        r = self.client.get(reverse('reservation-export-list-pdf'), {'date_from': day, 'date_to': day})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.content.startswith(b'%PDF'))
+        r = self.client.get(reverse('guest-export-csv'))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('Huber', r.content.decode('utf-8'))
 
     def test_requires_login(self):
         self.client.logout()

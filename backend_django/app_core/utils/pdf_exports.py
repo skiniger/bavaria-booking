@@ -5,6 +5,7 @@ Generates professional PDF documents for reservations and registration forms
 
 from io import BytesIO
 from datetime import datetime
+from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -166,10 +167,11 @@ class ReservationPDFExporter(PDFExporter):
         elements.append(Spacer(1, 5*mm))
 
         # Reservation details
+        local_time = timezone.localtime(reservation.reservation_time)
         data = [
-            ['Reservierungs-ID:', reservation.reservation_id or '—'],
-            ['Datum:', self._format_date(reservation.date)],
-            ['Uhrzeit:', reservation.time.strftime('%H:%M Uhr') if reservation.time else '—'],
+            ['Reservierungs-ID:', str(reservation.id)],
+            ['Datum:', self._format_date(local_time)],
+            ['Uhrzeit:', local_time.strftime('%H:%M Uhr')],
             ['Status:', self._get_status_text(reservation.status)],
             ['', ''],
         ]
@@ -187,14 +189,14 @@ class ReservationPDFExporter(PDFExporter):
         # Table and party details
         data.extend([
             ['Tisch:', f"Tisch {reservation.table.table_number}" if reservation.table else '—'],
-            ['Anzahl Gäste:', str(reservation.party_size)],
+            ['Anzahl Gäste:', str(reservation.number_of_guests)],
             ['Dauer (Min.):', str(reservation.duration_minutes) if reservation.duration_minutes else '—'],
             ['', ''],
         ])
 
         # Special requests
-        if reservation.special_requests:
-            data.append(['Besondere Wünsche:', reservation.special_requests])
+        if guest.special_requests:
+            data.append(['Besondere Wünsche:', guest.special_requests])
 
         if guest.allergies:
             data.append(['Allergien:', guest.allergies])
@@ -271,12 +273,13 @@ class ReservationPDFExporter(PDFExporter):
 
         # Table rows
         for res in reservations:
+            local_time = timezone.localtime(res.reservation_time)
             data.append([
-                self._format_date(res.date),
-                res.time.strftime('%H:%M') if res.time else '—',
+                self._format_date(local_time),
+                local_time.strftime('%H:%M'),
                 f"{res.guest.first_name} {res.guest.last_name}",
                 f"T{res.table.table_number}" if res.table else '—',
-                str(res.party_size),
+                str(res.number_of_guests),
                 self._get_status_text(res.status)[:3].upper()
             ])
 
@@ -364,7 +367,7 @@ class RegistrationFormPDFExporter(PDFExporter):
         guest = form.guest
 
         guest_data = [
-            ['Gast-ID:', guest.guest_id or '—'],
+            ['Gast-ID:', str(guest.id)],
             ['Nachname:', guest.last_name],
             ['Vorname:', guest.first_name],
             ['Anrede:', guest.salutation or '—'],
@@ -375,7 +378,7 @@ class RegistrationFormPDFExporter(PDFExporter):
         # Address information
         guest_data.extend([
             ['Anschrift:', ''],
-            ['Straße:', guest.street or '—'],
+            ['Straße:', f"{guest.street or ''} {guest.house_number or ''}".strip() or '—'],
             ['PLZ / Ort:', f"{guest.postal_code or '—'} {guest.city or '—'}"],
             ['Land:', guest.country or 'Deutschland'],
             ['', ''],
@@ -385,7 +388,7 @@ class RegistrationFormPDFExporter(PDFExporter):
         guest_data.extend([
             ['Kontakt:', ''],
             ['E-Mail:', guest.email or '—'],
-            ['Telefon:', guest.phone_number or '—'],
+            ['Telefon:', guest.phone or '—'],
             ['', ''],
         ])
 
