@@ -89,6 +89,8 @@ export const AdvancedSettings: React.FC = () => {
               type="password"
               value={formData.smtp_password || ''}
               onChange={(e) => setFormData({ ...formData, smtp_password: e.target.value })}
+              autoComplete="new-password"
+              placeholder={formData.smtp_password_set ? '•••••••• (gesetzt – leer lassen, um es zu behalten)' : 'Nicht gesetzt'}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"
             />
           </div>

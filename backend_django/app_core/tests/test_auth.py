@@ -171,9 +171,8 @@ class PermissionScopeTests(TestCase):
         }, content_type='application/json')
         self.assertIn(r.status_code, (403, 405))
 
-    @unittest.expectedFailure
     def test_BEFUND_smtp_password_not_readable_via_api(self):
-        """BEFUND: SystemSettingsSerializer (fields='__all__') liefert smtp_password im Klartext an jedes Konto."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: SystemSettingsSerializer (fields='__all__') liefert smtp_password im Klartext an jedes Konto."""
         SystemSettings.objects.create(
             company_name='Test', company_street='S', company_postal_code='1', company_city='O',
             company_phone='1', company_email='t@example.com', smtp_password='geheim-smtp',
@@ -181,3 +180,63 @@ class PermissionScopeTests(TestCase):
         r = self.client.get(reverse('system-settings-list'))
         self.assertEqual(r.status_code, 200)
         self.assertNotIn('geheim-smtp', r.content.decode())
+
+
+class SmtpSettingsAccessTests(TestCase):
+    """Fix 5: SMTP-Daten nur für Admins, Passwort nie im Klartext, nur setzbar."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.staff = User.objects.create_user(username='service2', password='geheim-123', employee_number='EMP-S2', role='staff')
+        self.admin = User.objects.create_user(username='chef', password='geheim-123', employee_number='EMP-A9', role='admin')
+        self.settings = SystemSettings.objects.create(
+            company_name='Test', company_street='S', company_postal_code='1', company_city='O',
+            company_phone='1', company_email='t@example.com', smtp_host='smtp.example.com',
+            smtp_username='mailer', smtp_password='alt-geheim',
+        )
+        self.detail = reverse('system-settings-detail', args=[self.settings.id])
+
+    def test_staff_reads_without_smtp_fields(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(self.detail)
+        self.assertEqual(r.status_code, 200)
+        for key in ('smtp_password', 'smtp_password_set', 'smtp_host', 'smtp_username'):
+            self.assertNotIn(key, r.data)
+        self.assertIn('tourist_tax_rate', r.data)  # Meldeschein braucht den Satz weiterhin
+        self.assertNotIn('alt-geheim', r.content.decode())
+
+    def test_staff_cannot_change_settings(self):
+        self.client.force_login(self.staff)
+        r = self.client.patch(self.detail, {'smtp_password': 'neu'}, content_type='application/json')
+        self.assertEqual(r.status_code, 403)
+        self.settings.refresh_from_db()
+        self.assertEqual(self.settings.smtp_password, 'alt-geheim')
+
+    def test_admin_sees_smtp_but_password_masked(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(self.detail)
+        self.assertEqual(r.data['smtp_host'], 'smtp.example.com')
+        self.assertTrue(r.data['smtp_password_set'])
+        self.assertNotIn('smtp_password', r.data)
+        self.assertNotIn('alt-geheim', r.content.decode())
+
+    def test_admin_can_set_password_write_only(self):
+        self.client.force_login(self.admin)
+        r = self.client.patch(self.detail, {'smtp_password': 'neu-geheim'}, content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('neu-geheim', r.content.decode())
+        self.settings.refresh_from_db()
+        self.assertEqual(self.settings.smtp_password, 'neu-geheim')
+
+    def test_blank_password_does_not_overwrite(self):
+        self.client.force_login(self.admin)
+        r = self.client.patch(self.detail, {'smtp_password': '', 'company_name': 'Neu'}, content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        self.settings.refresh_from_db()
+        self.assertEqual(self.settings.smtp_password, 'alt-geheim')
+        self.assertEqual(self.settings.company_name, 'Neu')
+
+    def test_superuser_counts_as_admin(self):
+        su = get_user_model().objects.create_superuser(username='root', password='x', employee_number='EMP-R9')
+        self.client.force_login(su)
+        self.assertEqual(self.client.patch(self.detail, {'company_name': 'X'}, content_type='application/json').status_code, 200)

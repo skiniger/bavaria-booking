@@ -26,6 +26,7 @@ from .serializers import (
     ReservationRequestSerializer, ReservationRequestSubmitSerializer
 )
 from . import ai_service
+from .permissions import ReadAuthenticatedWriteAdmin
 from .services.reservation_filter import score_submission, is_auto_approved
 from .utils.pdf_exports import ReservationPDFExporter, RegistrationFormPDFExporter
 from .utils.csv_exports import (
@@ -753,9 +754,10 @@ class RegistrationFormViewSet(viewsets.ModelViewSet):
 
 
 class SystemSettingsViewSet(viewsets.ModelViewSet):
-    """API Endpunkt für Systemeinstellungen"""
+    """API Endpunkt für Systemeinstellungen (Ändern nur Admin, SMTP-Passwort nie lesbar)."""
     queryset = SystemSettings.objects.all()
     serializer_class = SystemSettingsSerializer
+    permission_classes = [ReadAuthenticatedWriteAdmin]
 
 
 class DashboardViewSet(viewsets.ViewSet):
