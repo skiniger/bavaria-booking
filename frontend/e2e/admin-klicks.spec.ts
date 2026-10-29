@@ -43,7 +43,7 @@ test('Navigation: alle Menüpunkte laden ohne JS-/500-Fehler @mobil', async ({ p
 });
 
 test('BEFUND Meiti AI: Seite lädt Konversationen ohne HTTP 500', async ({ page }) => {
-  test.fail(true, 'BEFUND: Frontend schickt employee_id=mock-employee-id (keine UUID) → Backend 500');
+  // BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Frontend schickte employee_id=mock-employee-id → Backend 500.
   await skipTour(page);
   const problems = collectProblems(page);
   await login(page);

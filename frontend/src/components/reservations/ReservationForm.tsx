@@ -4,6 +4,20 @@ import { reservationsAPI, guestsAPI, tablesAPI } from '../../services/api';
 import type { Table, Guest, Reservation } from '../../types';
 import { X, Search, Calendar, Clock, Users, CreditCard, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseApiError } from '../../utils/errorHandling';
+
+/** Liest DRF-Fehler ({feld: ["Text"]}, detail, non_field_errors) in einen lesbaren Satz. */
+function apiErrorText(error: unknown): string {
+  const parsed = parseApiError(error);
+  const d = parsed.details;
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    const parts = Object.values(d as Record<string, unknown>)
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .filter((v): v is string => typeof v === 'string');
+    if (parts.length > 0) return parts.join(' ');
+  }
+  return parsed.message;
+}
 
 interface ReservationFormProps {
   isOpen: boolean;
@@ -64,9 +78,13 @@ export default function ReservationForm({
     queryFn: () => tablesAPI.getAll().then((res) => res.data),
   });
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   // Create/Update Guest Mutation
   const createGuestMutation = useMutation({
     mutationFn: (data: Partial<Guest>) => guestsAPI.create(data),
+    onMutate: () => setSubmitError(null),
+    onError: (error) => setSubmitError(`Gast konnte nicht gespeichert werden: ${apiErrorText(error)}`),
     onSuccess: (response) => {
       setSelectedGuest(response.data);
       setStep(2);
@@ -76,6 +94,8 @@ export default function ReservationForm({
   // Create Reservation Mutation
   const createReservationMutation = useMutation({
     mutationFn: (data: Partial<Reservation>) => reservationsAPI.create(data),
+    onMutate: () => setSubmitError(null),
+    onError: (error) => setSubmitError(`Reservierung nicht gespeichert: ${apiErrorText(error)}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
@@ -86,6 +106,7 @@ export default function ReservationForm({
   });
 
   const resetForm = () => {
+    setSubmitError(null);
     setStep(1);
     setSearchPhone('');
     setSelectedGuest(null);
@@ -176,6 +197,12 @@ export default function ReservationForm({
         <div className="p-6">
           {step === 1 && (
             <form onSubmit={handleGuestSubmit} className="space-y-4">
+              {submitError && (
+                <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
               <h3 className="text-lg font-bold mb-4">Schritt 1: Gast auswählen oder anlegen</h3>
 
               {/* Guest Search */}
@@ -361,6 +388,12 @@ export default function ReservationForm({
 
           {step === 2 && selectedGuest && (
             <form onSubmit={handleReservationSubmit} className="space-y-4">
+              {submitError && (
+                <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
               <h3 className="text-lg font-bold mb-4">Schritt 2: Reservierungsdetails</h3>
 
               {/* Guest Info */}

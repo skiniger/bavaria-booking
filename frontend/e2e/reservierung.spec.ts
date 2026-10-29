@@ -61,7 +61,7 @@ test('Reservierung: DSGVO-Haken fehlt → Formular bleibt in Schritt 1, kein Req
 });
 
 test('Reservierung: Fehler vom Backend (Tisch belegt) wird dem Nutzer angezeigt', async ({ page, request }) => {
-  test.fail(true, 'BEFUND: Mutation ohne onError – HTTP 400 wird nicht angezeigt');
+  // BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Mutation ohne onError – HTTP 400 wurde nicht angezeigt.
   await skipTour(page);
   // Tisch per API belegen
   const csrf = await apiSession(request);
