@@ -166,7 +166,7 @@ export default function RegistrationFormComponent({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
@@ -189,7 +189,7 @@ export default function RegistrationFormComponent({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Guest Information */}
           {selectedGuest && (
-            <div className="card bg-bavaria-blue bg-opacity-10">
+            <div className="card bg-bavaria-blue/10">
               <h3 className="text-lg font-bold mb-2 flex items-center text-bavaria-blue">
                 <User className="w-5 h-5 mr-2" />
                 Gast
@@ -267,7 +267,7 @@ export default function RegistrationFormComponent({
                   </div>
 
                   {calculatedValues.nights > 0 && (
-                    <div className="p-3 bg-bavaria-blue bg-opacity-10 rounded-lg">
+                    <div className="p-3 bg-bavaria-blue/10 rounded-lg">
                       <div className="text-sm text-bavaria-blue font-medium">
                         Anzahl Nächte: {calculatedValues.nights}
                       </div>

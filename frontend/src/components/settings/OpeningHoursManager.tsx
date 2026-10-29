@@ -223,7 +223,7 @@ export const OpeningHoursManager: React.FC = () => {
       </div>
 
       {/* Info */}
-      <div className="bg-bavaria-blue bg-opacity-10 rounded-lg p-4 border-l-4 border-bavaria-blue">
+      <div className="bg-bavaria-blue/10 rounded-lg p-4 border-l-4 border-bavaria-blue">
         <div className="flex items-start space-x-3">
           <Clock className="h-5 w-5 text-bavaria-blue mt-0.5" />
           <div className="text-sm text-gray-700">

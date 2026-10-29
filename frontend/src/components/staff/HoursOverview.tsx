@@ -411,13 +411,13 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           tracking.check_out
-                            ? 'bg-bavaria-green bg-opacity-10 text-bavaria-green'
-                            : 'bg-bavaria-yellow bg-opacity-10 text-bavaria-yellow'
+                            ? 'bg-bavaria-green/10 text-bavaria-green'
+                            : 'bg-bavaria-yellow/10 text-bavaria-yellow'
                         }`}>
                           {tracking.check_out ? 'Abgeschlossen' : 'Aktiv'}
                         </span>
                         {hasCorrection && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bavaria-yellow bg-opacity-10 text-bavaria-yellow">
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bavaria-yellow/10 text-bavaria-yellow">
                             Korrigiert
                           </span>
                         )}

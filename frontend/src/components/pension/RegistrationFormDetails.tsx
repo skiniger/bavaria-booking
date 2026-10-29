@@ -68,7 +68,7 @@ export default function RegistrationFormDetails({
   const statusColor = getStatusColor(form.status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
@@ -242,7 +242,7 @@ export default function RegistrationFormDetails({
           </div>
 
           {/* Pricing */}
-          <div className="card bg-bavaria-blue bg-opacity-10">
+          <div className="card bg-bavaria-blue/10">
             <h3 className="font-bold text-lg mb-4 flex items-center text-bavaria-blue">
               <Euro className="w-5 h-5 mr-2" />
               Preisberechnung

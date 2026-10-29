@@ -255,7 +255,7 @@ export const AdvancedSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 p-4 bg-bavaria-blue bg-opacity-10 rounded-lg border-l-4 border-bavaria-blue">
+        <div className="mt-4 p-4 bg-bavaria-blue/10 rounded-lg border-l-4 border-bavaria-blue">
           <p className="text-sm text-gray-700">
             <strong>Hinweis:</strong> Backups werden automatisch gemäß der konfigurierten
             Frequenz durchgeführt. Die Backup-Dateien werden auf dem Server gespeichert.

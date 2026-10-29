@@ -100,6 +100,11 @@ class ReservationApiTests(TestCase):
         r = self.client.get(self.url, {'guest_id': 'kein-uuid'})
         self.assertEqual(r.status_code, 400)
 
+    def test_payment_method_is_saved(self):
+        r = self.post(payment_method='ec')
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Reservation.objects.get(pk=r.data['id']).payment_method, 'ec')
+
     def test_check_availability(self):
         self.post()
         url = reverse('reservation-check-availability')

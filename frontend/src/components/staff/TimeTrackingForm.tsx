@@ -91,7 +91,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
   const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -133,7 +133,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
 
           {/* Current Employee Info */}
           {selectedEmployeeData && (
-            <div className="bg-bavaria-blue bg-opacity-10 rounded-lg p-4">
+            <div className="bg-bavaria-blue/10 rounded-lg p-4">
               <div className="flex items-center space-x-3">
                 <div className="h-12 w-12 rounded-full bg-bavaria-blue flex items-center justify-center text-white font-semibold text-lg">
                   {selectedEmployeeData.first_name[0]}{selectedEmployeeData.last_name[0]}
@@ -155,7 +155,7 @@ export const TimeTrackingForm: React.FC<TimeTrackingFormProps> = ({ onClose, emp
 
           {/* Current Tracking Info */}
           {currentTracking && (
-            <div className="bg-bavaria-green bg-opacity-10 rounded-lg p-4 border-l-4 border-bavaria-green">
+            <div className="bg-bavaria-green/10 rounded-lg p-4 border-l-4 border-bavaria-green">
               <div className="flex items-center space-x-2 mb-2">
                 <LogIn className="h-5 w-5 text-bavaria-green" />
                 <p className="font-semibold text-gray-800">Eingestempelt seit</p>
