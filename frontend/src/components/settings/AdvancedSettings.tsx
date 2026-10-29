@@ -6,6 +6,7 @@ import type { SystemSettings } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { resetOnboardingTour } from '../../utils/onboardingTour';
+import { parseApiError } from '../../utils/errorHandling';
 
 export const AdvancedSettings: React.FC = () => {
   const queryClient = useQueryClient();
@@ -34,6 +35,9 @@ export const AdvancedSettings: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
       alert('Einstellungen erfolgreich gespeichert!');
+    },
+    onError: (error) => {
+      alert(`Einstellungen nicht gespeichert: ${parseApiError(error).message}`);
     },
   });
 

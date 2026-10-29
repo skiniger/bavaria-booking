@@ -90,7 +90,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
 
   // Calculate statistics
   const statistics = useMemo(() => {
-    const totalHours = filteredTrackings.reduce((sum, t) => sum + (t.total_hours || 0), 0);
+    const totalHours = filteredTrackings.reduce((sum, t) => sum + Number(t.total_hours || 0), 0);
     const totalBreakMinutes = filteredTrackings.reduce((sum, t) => sum + (t.break_minutes || 0), 0);
     const completedShifts = filteredTrackings.filter(t => t.check_out).length;
     const activeShifts = filteredTrackings.filter(t => !t.check_out).length;
@@ -101,7 +101,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
       if (!byEmployee[t.employee]) {
         byEmployee[t.employee] = { hours: 0, shifts: 0 };
       }
-      byEmployee[t.employee].hours += t.total_hours || 0;
+      byEmployee[t.employee].hours += Number(t.total_hours || 0);
       byEmployee[t.employee].shifts += 1;
     });
 
@@ -131,7 +131,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
         format(new Date(t.check_in), 'HH:mm', { locale: de }),
         t.check_out ? format(new Date(t.check_out), 'HH:mm', { locale: de }) : 'Aktiv',
         t.break_minutes || 0,
-        t.total_hours?.toFixed(2) || '0.00',
+        (t.total_hours != null ? Number(t.total_hours).toFixed(2) : '0.00'),
         (t.correction_note || '').replace(/\n/g, ' '),
       ];
     });
@@ -406,7 +406,7 @@ export const HoursOverview: React.FC<HoursOverviewProps> = ({ onEditTracking }) 
                         {tracking.break_minutes || 0} Min
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-bavaria-green">
-                        {tracking.total_hours?.toFixed(2) || '0.00'}h
+                        {(tracking.total_hours != null ? Number(tracking.total_hours).toFixed(2) : '0.00')}h
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

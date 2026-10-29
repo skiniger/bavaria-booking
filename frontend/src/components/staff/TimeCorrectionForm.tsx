@@ -208,7 +208,7 @@ export const TimeCorrectionForm: React.FC<TimeCorrectionFormProps> = ({ onClose,
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Arbeitszeit</p>
-                      <p className="font-medium text-gray-800">{tracking.total_hours?.toFixed(2) || '0.00'}h</p>
+                      <p className="font-medium text-gray-800">{(tracking.total_hours != null ? Number(tracking.total_hours).toFixed(2) : '0.00')}h</p>
                     </div>
                   </div>
                 </div>

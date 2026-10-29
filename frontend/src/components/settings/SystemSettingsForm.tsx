@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Save, AlertCircle } from 'lucide-react';
 import { systemSettingsAPI } from '../../services/api';
 import type { SystemSettings } from '../../types';
+import { parseApiError } from '../../utils/errorHandling';
 
 export const SystemSettingsForm: React.FC = () => {
   const queryClient = useQueryClient();
@@ -35,8 +36,8 @@ export const SystemSettingsForm: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
       alert('Einstellungen erfolgreich gespeichert!');
     },
-    onError: () => {
-      alert('Fehler beim Speichern der Einstellungen');
+    onError: (error) => {
+      alert(`Fehler beim Speichern der Einstellungen: ${parseApiError(error).message}`);
     },
   });
 

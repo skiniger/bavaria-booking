@@ -4,6 +4,7 @@ import { Clock, MapPin, Save } from 'lucide-react';
 import { openingHoursAPI } from '../../services/api';
 import { areasAPI } from '../../services/api';
 import type { OpeningHours } from '../../types';
+import { parseApiError } from '../../utils/errorHandling';
 
 const WEEKDAYS = [
   { value: 0, label: 'Montag' },
@@ -117,6 +118,9 @@ export const OpeningHoursManager: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['openingHours'] });
+    },
+    onError: (error) => {
+      alert(`Öffnungszeiten nicht gespeichert: ${parseApiError(error).message}`);
     },
   });
 
