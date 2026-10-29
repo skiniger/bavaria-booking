@@ -220,7 +220,7 @@ export default function RegistrationFormDetails({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Frühstück:</span>
                   <span className="font-medium">
-                    {form.breakfast_included ? `Ja (${form.breakfast_price.toFixed(2)} € / Tag)` : 'Nein'}
+                    {form.breakfast_included ? `Ja (${Number(form.breakfast_price).toFixed(2)} € / Tag)` : 'Nein'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -249,16 +249,16 @@ export default function RegistrationFormDetails({
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Übernachtung ({form.nights} × {form.room_price_per_night.toFixed(2)} €):</span>
+                <span>Übernachtung ({form.nights} × {Number(form.room_price_per_night).toFixed(2)} €):</span>
                 <span className="font-medium">
-                  {((form.nights || 0) * (form.room_price_per_night || 0)).toFixed(2)} €
+                  {((form.nights || 0) * Number(form.room_price_per_night || 0)).toFixed(2)} €
                 </span>
               </div>
               {form.breakfast_included && (
                 <div className="flex justify-between">
-                  <span>Frühstück ({form.nights} × {form.breakfast_price.toFixed(2)} €):</span>
+                  <span>Frühstück ({form.nights} × {Number(form.breakfast_price).toFixed(2)} €):</span>
                   <span className="font-medium">
-                    {((form.nights || 0) * form.breakfast_price).toFixed(2)} €
+                    {((form.nights || 0) * Number(form.breakfast_price)).toFixed(2)} €
                   </span>
                 </div>
               )}
@@ -275,7 +275,7 @@ export default function RegistrationFormDetails({
               )}
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-bavaria-blue">
                 <span className="text-bavaria-blue">Gesamtsumme:</span>
-                <span className="text-bavaria-blue">{form.total_amount.toFixed(2)} €</span>
+                <span className="text-bavaria-blue">{Number(form.total_amount).toFixed(2)} €</span>
               </div>
             </div>
           </div>

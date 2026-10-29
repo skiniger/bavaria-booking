@@ -217,7 +217,7 @@ export default function RegistrationFormList({
                         {paymentInfo.text}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {form.total_amount.toFixed(2)} €
+                        {Number(form.total_amount).toFixed(2)} €
                       </div>
                     </div>
 
