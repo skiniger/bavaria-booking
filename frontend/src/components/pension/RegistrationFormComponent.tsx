@@ -53,8 +53,22 @@ export default function RegistrationFormComponent({
     nights: 0,
     roomTotal: 0,
     breakfastTotal: 0,
+    touristTaxTotal: 0,
     totalAmount: 0,
   });
+
+  // Kurtaxe: Satz pro Nacht (editierbar, Standard aus Systemeinstellungen).
+  // Gespeichert wird in tourist_tax_amount der GESAMTBETRAG (Satz × Nächte),
+  // genau wie ihn das Backend in total_amount einrechnet.
+  const [touristTaxRateInput, setTouristTaxRateInput] = useState<number | null>(
+    editForm
+      ? (() => {
+          const n = differenceInDays(new Date(editForm.departure_date), new Date(editForm.arrival_date));
+          return n > 0 ? Number(editForm.tourist_tax_amount) / n : Number(editForm.tourist_tax_amount);
+        })()
+      : null
+  );
+  const touristTaxRate = touristTaxRateInput ?? Number(settings?.tourist_tax_rate ?? 2.5);
 
   // Calculate values when dates or prices change
   useEffect(() => {
@@ -69,7 +83,7 @@ export default function RegistrationFormComponent({
         ? (formData.breakfast_price || 0) * nights
         : 0;
       const touristTaxTotal = formData.tourist_tax_required
-        ? (formData.tourist_tax_amount || settings?.tourist_tax_rate || 0) * nights
+        ? Math.round(touristTaxRate * Math.max(nights, 0) * 100) / 100
         : 0;
       const totalAmount = roomTotal + breakfastTotal + touristTaxTotal;
 
@@ -77,15 +91,9 @@ export default function RegistrationFormComponent({
         nights,
         roomTotal,
         breakfastTotal,
+        touristTaxTotal,
         totalAmount,
       });
-
-      setFormData((prev) => ({
-        ...prev,
-        tourist_tax_amount: formData.tourist_tax_required
-          ? settings?.tourist_tax_rate || 2.5
-          : 0,
-      }));
     }
   }, [
     formData.arrival_date,
@@ -94,8 +102,7 @@ export default function RegistrationFormComponent({
     formData.breakfast_included,
     formData.breakfast_price,
     formData.tourist_tax_required,
-    formData.tourist_tax_amount,
-    settings,
+    touristTaxRate,
   ]);
 
   const createOrUpdateMutation = useMutation({
@@ -114,6 +121,7 @@ export default function RegistrationFormComponent({
   });
 
   const resetForm = () => {
+    setTouristTaxRateInput(null);
     setFormData({
       guest: '',
       arrival_date: format(new Date(), 'yyyy-MM-dd'),
@@ -141,6 +149,10 @@ export default function RegistrationFormComponent({
 
     const submitData = {
       ...formData,
+      // Gast immer aus der aktuellen Auswahl nehmen – formData.guest wird nur
+      // beim ersten Mount gesetzt und wäre sonst leer (→ 400 „guest null“).
+      guest: selectedGuest?.id ?? formData.guest,
+      tourist_tax_amount: formData.tourist_tax_required ? calculatedValues.touristTaxTotal : 0,
       total_amount: calculatedValues.totalAmount,
     };
 
@@ -407,10 +419,11 @@ export default function RegistrationFormComponent({
                         type="number"
                         step="0.01"
                         min="0"
-                        value={formData.tourist_tax_amount}
-                        onChange={(e) =>
-                          updateField('tourist_tax_amount', parseFloat(e.target.value))
-                        }
+                        value={touristTaxRate}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setTouristTaxRateInput(Number.isNaN(v) ? 0 : v);
+                        }}
                         className="input"
                         placeholder="z.B. 2.50"
                       />
@@ -472,11 +485,8 @@ export default function RegistrationFormComponent({
                       <div className="flex justify-between text-sm">
                         <span>Kurtaxe:</span>
                         <span className="font-medium">
-                          {calculatedValues.nights} × {formData.tourist_tax_amount || 0} € ={' '}
-                          {(
-                            calculatedValues.nights * (formData.tourist_tax_amount || 0)
-                          ).toFixed(2)}{' '}
-                          €
+                          {calculatedValues.nights} × {touristTaxRate.toFixed(2)} € ={' '}
+                          {calculatedValues.touristTaxTotal.toFixed(2)} €
                         </span>
                       </div>
                     )}

@@ -229,8 +229,10 @@ export default function Pension() {
       <PensionGuestForm
         isOpen={isGuestFormOpen}
         onClose={() => {
+          // selectedGuest NICHT zurücksetzen: PensionGuestForm ruft nach
+          // onGuestCreated() auch onClose() auf – sonst ist der gerade
+          // angelegte Gast im Meldeschein wieder weg (Speichern gesperrt).
           setIsGuestFormOpen(false);
-          setSelectedGuest(null);
         }}
         onGuestCreated={handleGuestCreated}
       />

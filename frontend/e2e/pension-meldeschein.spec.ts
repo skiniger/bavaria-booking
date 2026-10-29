@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { login, skipTour, collectProblems, field, SHOTS, API, apiSession } from './helpers';
 
 test('Pension: neuen Gast erfassen → Meldeschein öffnet sich und lässt sich speichern', async ({ page, request }) => {
-  test.fail(true, 'BEFUND: nach "Neuer Gast" setzt onClose selectedGuest=null → Button "Meldeschein erstellen" bleibt deaktiviert');
+  // BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: nach "Neuer Gast" setzte onClose selectedGuest=null → Button deaktiviert
   test.setTimeout(30_000);
   await skipTour(page);
   const problems = collectProblems(page);
@@ -71,8 +71,8 @@ test('Pension: neuen Gast erfassen → Meldeschein öffnet sich und lässt sich 
   expect(problems.filter((p) => p.startsWith('pageerror'))).toEqual([]);
 });
 
-test('Pension: Meldeschein über "Neuer Meldeschein" → Gastsuche → Auswahl → Speichern', async ({ page }) => {
-  test.fail(true, 'BEFUND: formData.guest wird nur beim ersten Mount gesetzt → POST mit guest=null → 400, ohne Anzeige');
+test('Pension: Meldeschein über "Neuer Meldeschein" → Gastsuche → Auswahl → Speichern', async ({ page, request }) => {
+  // BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: formData.guest nur beim ersten Mount gesetzt → POST mit guest=null → 400
   await skipTour(page);
   await login(page);
   await page.goto('/pension');
@@ -95,7 +95,11 @@ test('Pension: Meldeschein über "Neuer Meldeschein" → Gastsuche → Auswahl �
   const body = await r.json();
   test.info().annotations.push({ type: 'POST /registration-forms', description: `${r.status()} ${JSON.stringify(body).slice(0, 300)} | UI: ${uiTotal}` });
   expect(r.status()).toBe(201);
-  // 3 Nächte × 60 € + Kurtaxe. UI rechnet Kurtaxe × Nächte, Backend speichert tourist_tax_amount einmalig.
+  // Fix 4: Kurtaxe = Satz × Nächte (1 Person je Meldeschein); UI und Backend müssen dieselbe Summe zeigen.
+  await apiSession(request);
+  const rate = Number((await (await request.get(`${API}/system-settings/`)).json())[0]?.tourist_tax_rate ?? 2.5);
   const uiNumber = Number((uiTotal.match(/([\d.]+)\s*€/) ?? [])[1]);
-  expect(Number(body.total_amount), `BEFUND Summe: UI ${uiNumber} € ≠ Backend ${body.total_amount} €`).toBeCloseTo(uiNumber, 2);
+  expect(Number(body.tourist_tax_amount)).toBeCloseTo(3 * rate, 2);
+  expect(uiNumber).toBeCloseTo(3 * 60 + 3 * rate, 2);
+  expect(Number(body.total_amount), `Summe: UI ${uiNumber} € ≠ Backend ${body.total_amount} €`).toBeCloseTo(uiNumber, 2);
 });
