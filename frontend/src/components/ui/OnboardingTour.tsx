@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ONBOARDING_TOUR_STORAGE_KEY } from '../../utils/onboardingTour';
+import {
+  clearOnboardingTourState,
+  isOnboardingTourCompleted,
+  markOnboardingTourCompleted,
+} from '../../utils/onboardingTour';
 
 interface TourStep {
   title: string;
@@ -65,19 +69,22 @@ const tourSteps: TourStep[] = [
   },
 ];
 
-export default function OnboardingTour() {
+interface OnboardingTourProps {
+  /** ID des angemeldeten Kontos – der Abschluss wird pro Benutzer gespeichert. */
+  userId?: string;
+}
+
+export default function OnboardingTour({ userId }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if tour has been completed
-    const tourCompleted = localStorage.getItem(ONBOARDING_TOUR_STORAGE_KEY);
-    if (!tourCompleted) {
-      // Show tour after a short delay
-      setTimeout(() => setIsVisible(true), 1000);
-    }
-  }, []);
+    // Nur einmal pro Benutzer zeigen
+    if (isOnboardingTourCompleted(userId)) return;
+    const timer = setTimeout(() => setIsVisible(true), 1000);
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   useEffect(() => {
     // Navigate to route if specified
@@ -106,16 +113,29 @@ export default function OnboardingTour() {
   };
 
   const completeTour = () => {
-    localStorage.setItem(ONBOARDING_TOUR_STORAGE_KEY, 'true');
+    markOnboardingTourCompleted(userId);
     setIsVisible(false);
   };
+
+  // Escape schließt die Tour (und merkt sie sich als erledigt)
+  useEffect(() => {
+    if (!isVisible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        markOnboardingTourCompleted(userId);
+        setIsVisible(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isVisible, userId]);
 
   // Allow users to restart tour
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Ctrl+Shift+T to restart tour
       if (e.ctrlKey && e.shiftKey && e.key === 'T') {
-        localStorage.removeItem(ONBOARDING_TOUR_STORAGE_KEY);
+        clearOnboardingTourState();
         setCurrentStep(0);
         setIsVisible(true);
       }
@@ -133,10 +153,20 @@ export default function OnboardingTour() {
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-        {/* Tour Modal */}
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full animate-slide-in">
+      {/* Kein Vollbild-Overlay mehr: die Tour ist eine schwebende Karte und
+          blockiert keine Klicks auf die App (vorher fing ein fixed-inset-0-Overlay
+          nach 1 s alle Klicks ab). */}
+      <div
+        className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 pointer-events-none flex justify-end"
+        data-testid="onboarding-tour"
+      >
+        {/* Tour-Karte */}
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-label="Einführungstour"
+          className="pointer-events-auto bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full max-h-[80vh] overflow-y-auto animate-slide-in"
+        >
           {/* Progress Bar */}
           <div className="h-2 bg-gray-200 rounded-t-xl overflow-hidden">
             <div
@@ -152,7 +182,7 @@ export default function OnboardingTour() {
                 {currentStep + 1}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{step.title}</h2>
+                <h2 className="text-xl font-bold text-gray-900">{step.title}</h2>
                 <p className="text-sm text-gray-500">
                   Schritt {currentStep + 1} von {tourSteps.length}
                 </p>
@@ -168,8 +198,8 @@ export default function OnboardingTour() {
           </div>
 
           {/* Content */}
-          <div className="p-8">
-            <p className="text-lg text-gray-700 leading-relaxed">{step.content}</p>
+          <div className="p-6">
+            <p className="text-base text-gray-700 leading-relaxed">{step.content}</p>
 
             {/* Feature Highlights */}
             {currentStep === 0 && (
@@ -258,7 +288,7 @@ export default function OnboardingTour() {
           {/* Hint */}
           <div className="px-6 pb-4 text-center">
             <p className="text-xs text-gray-500">
-              Tipp: Drücken Sie Ctrl+Shift+T um die Tour neu zu starten
+              Tipp: Esc schließt die Tour, Ctrl+Shift+T startet sie neu
             </p>
           </div>
         </div>

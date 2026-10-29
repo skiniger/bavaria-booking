@@ -53,23 +53,41 @@ test('BEFUND Meiti AI: Seite lädt Konversationen ohne HTTP 500', async ({ page 
   expect(problems.filter((p) => p.startsWith('HTTP 5'))).toEqual([]);
 });
 
-test('Ursache "Klicks gehen nicht": Onboarding-Overlay blockiert Klicks bei neuem Browser', async ({ page }) => {
+test('Onboarding-Tour blockiert keine Klicks, lässt sich schließen und erscheint pro Benutzer nur einmal', async ({ page }) => {
+  // BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Vollbild-Overlay fing nach 1 s alle Klicks ab.
   // bewusst OHNE skipTour
   await login(page);
-  await page.waitForTimeout(1600);
-  const overlay = page.locator('div.fixed.inset-0.z-50');
-  const visible = await overlay.first().isVisible().catch(() => false);
-  await page.screenshot({ path: `${SHOTS}/desktop-onboarding-overlay.png` });
-  test.info().annotations.push({ type: 'overlay-sichtbar', description: String(visible) });
-  if (visible) {
-    // Klick auf Menüpunkt wird vom Overlay abgefangen
-    let blocked = false;
-    try {
-      await page.getByRole('link', { name: 'Pension', exact: true }).first().click({ timeout: 2000 });
-    } catch { blocked = true; }
-    test.info().annotations.push({ type: 'klick-blockiert', description: String(blocked) });
-    expect(blocked).toBeTruthy();
+  const tour = page.getByRole('dialog', { name: 'Einführungstour' });
+  await expect(tour).toBeVisible({ timeout: 5000 });
+  await page.screenshot({ path: `${SHOTS}/${test.info().project.name}-onboarding-tour.png` });
+
+  // Klick in die App funktioniert trotz sichtbarer Tour
+  if (test.info().project.name === 'handy') {
+    await page.getByRole('button', { name: 'Menü öffnen' }).click({ timeout: 3000 });
   }
+  await page.getByRole('link', { name: 'Pension', exact: true }).first().click({ timeout: 3000 });
+  await expect(page).toHaveURL(/\/pension/);
+
+  // Schließen über X → Zustand pro Benutzer gespeichert
+  await tour.getByRole('button', { name: 'Tour beenden' }).click();
+  await expect(tour).toBeHidden();
+  const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('bavariabooking_tour_completed')));
+  test.info().annotations.push({ type: 'localStorage', description: keys.join(', ') });
+  expect(keys.some((k) => k.startsWith('bavariabooking_tour_completed:'))).toBeTruthy();
+
+  // Nach Neuladen kommt die Tour nicht wieder
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Reservierungen' }).first()).toBeAttached({ timeout: 15_000 });
+  await page.waitForTimeout(1600);
+  await expect(tour).toHaveCount(0);
+});
+
+test('Onboarding-Tour schließt mit Escape', async ({ page }) => {
+  await login(page);
+  const tour = page.getByRole('dialog', { name: 'Einführungstour' });
+  await expect(tour).toBeVisible({ timeout: 5000 });
+  await page.keyboard.press('Escape');
+  await expect(tour).toBeHidden();
 });
 
 test('Mobil: Menü-Button öffnet Navigation @mobil', async ({ page }) => {
