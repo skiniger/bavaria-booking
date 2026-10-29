@@ -1,11 +1,13 @@
 """Tests für Anmeldung (Session + CSRF) und die geschlossene API."""
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
 
 class AuthTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username='personal', password='geheim-123', employee_number='EMP-A1',
         )
@@ -83,6 +85,7 @@ class AuthEdgeCaseTests(TestCase):
     """Randfälle der Anmeldung."""
 
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username='personal', password='geheim-123', employee_number='EMP-B1',
         )
@@ -140,13 +143,21 @@ class AuthEdgeCaseTests(TestCase):
         self._post({'username': 'personal', 'password': 'geheim-123'})
         self.assertNotEqual(first, self.client.session.session_key)
 
-    @unittest.expectedFailure
     def test_BEFUND_login_has_rate_limit(self):
-        """BEFUND: Es gibt kein Rate-Limit/Lockout für /api/auth/login/ (Brute-Force möglich).
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Es gibt kein Rate-Limit/Lockout für /api/auth/login/ (Brute-Force möglich).
         Erwartet wäre spätestens nach 10 Fehlversuchen 429."""
         for _ in range(15):
             r = self._post({'username': 'personal', 'password': 'falsch'})
         self.assertEqual(r.status_code, 429)
+
+    def test_login_lockout_blocks_correct_password_and_success_resets(self):
+        for _ in range(3):
+            self._post({'username': 'personal', 'password': 'falsch'})
+        self.assertEqual(self._post({'username': 'personal', 'password': 'geheim-123'}).status_code, 200)
+        cache.clear()
+        for _ in range(10):
+            self._post({'username': 'personal', 'password': 'falsch'})
+        self.assertEqual(self._post({'username': 'personal', 'password': 'geheim-123'}).status_code, 429)
 
 
 class PermissionScopeTests(TestCase):
@@ -163,13 +174,26 @@ class PermissionScopeTests(TestCase):
                      'registration-form-list', 'area-list', 'table-list', 'system-settings-list'):
             self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
 
-    @unittest.expectedFailure
     def test_BEFUND_staff_role_cannot_create_employees(self):
-        """BEFUND: Rolle 'staff' kann neue Mitarbeiter anlegen (keine Rollenprüfung in EmployeeViewSet)."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Rolle 'staff' kann neue Mitarbeiter anlegen (keine Rollenprüfung in EmployeeViewSet)."""
         r = self.client.post(reverse('employee-list'), {
             'username': 'neu', 'employee_number': 'EMP-X9', 'role': 'admin',
         }, content_type='application/json')
         self.assertIn(r.status_code, (403, 405))
+
+    def test_staff_can_still_read_and_check_in(self):
+        self.assertEqual(self.client.get(reverse('employee-list')).status_code, 200)
+        r = self.client.post(reverse('employee-check-in', args=[self.staff.pk]))
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def test_admin_can_create_employee(self):
+        admin = get_user_model().objects.create_user(
+            username='chef2', password='geheim-123', employee_number='EMP-A8', role='admin')
+        self.client.force_login(admin)
+        r = self.client.post(reverse('employee-list'), {
+            'username': 'neu2', 'employee_number': 'EMP-X8', 'role': 'staff',
+        }, content_type='application/json')
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_BEFUND_smtp_password_not_readable_via_api(self):
         """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: SystemSettingsSerializer (fields='__all__') liefert smtp_password im Klartext an jedes Konto."""

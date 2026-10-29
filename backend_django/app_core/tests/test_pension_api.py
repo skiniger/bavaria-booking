@@ -156,18 +156,16 @@ class PensionApiTests(TestCase):
         self.assertTrue(PensionGuest.objects.filter(pk=gid).exists())
         self.assertNotEqual(code, 204)
 
-    @unittest.expectedFailure
     def test_BEFUND_delete_guest_with_registration_returns_clean_error(self):
-        """BEFUND: Löschen eines Gastes mit Meldeschein wirft ProtectedError → HTTP 500 statt 400/409."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Löschen eines Gastes mit Meldeschein wirft ProtectedError → HTTP 500 statt 400/409."""
         gid = self.create_guest().data['id']
         self.client.post(reverse('registration-form-list'), self.form_payload(gid), content_type='application/json')
         self.client.raise_request_exception = False
         r = self.client.delete(reverse('pension-guest-detail', args=[gid]))
         self.assertIn(r.status_code, (400, 409))
 
-    @unittest.expectedFailure
     def test_BEFUND_departure_before_arrival_rejected(self):
-        """BEFUND: Abreise vor Anreise wird angenommen; Summe wird negativ."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Abreise vor Anreise wird angenommen; Summe wird negativ."""
         gid = self.create_guest().data['id']
         arrival = date.today() + timedelta(days=5)
         r = self.client.post(reverse('registration-form-list'),
@@ -175,13 +173,16 @@ class PensionApiTests(TestCase):
                              content_type='application/json')
         self.assertEqual(r.status_code, 400)
 
-    @unittest.expectedFailure
     def test_BEFUND_business_trip_requires_company(self):
-        """BEFUND: Reisezweck 'business' ohne Firmenname wird angenommen (keine Pflichtprüfung)."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Reisezweck 'business' ohne Firmenname wird angenommen (keine Pflichtprüfung)."""
         gid = self.create_guest().data['id']
         r = self.client.post(reverse('registration-form-list'),
                              self.form_payload(gid, travel_purpose='business'), content_type='application/json')
         self.assertEqual(r.status_code, 400)
+        r = self.client.post(reverse('registration-form-list'),
+                             self.form_payload(gid, travel_purpose='business', company_name='Firma GmbH'),
+                             content_type='application/json')
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_requires_login(self):
         self.client.logout()

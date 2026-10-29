@@ -95,9 +95,8 @@ class ReservationApiTests(TestCase):
         # ungültiges Datum wird ignoriert (kein 500)
         self.assertEqual(self.client.get(self.url, {'date': '31.12.2026'}).status_code, 200)
 
-    @unittest.expectedFailure
     def test_BEFUND_invalid_uuid_filter_returns_400_not_500(self):
-        """BEFUND: ?guest_id=kein-uuid führt zu ValidationError → 500 statt 400."""
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: ?guest_id=kein-uuid führt zu ValidationError → 500 statt 400."""
         r = self.client.get(self.url, {'guest_id': 'kein-uuid'})
         self.assertEqual(r.status_code, 400)
 
@@ -184,10 +183,23 @@ class ChatMockTests(TestCase):
         self.assertEqual(r.data['assistant_message']['role'], 'assistant')
         self.assertTrue(r.data['assistant_message']['content'])
 
-    @unittest.expectedFailure
     def test_BEFUND_chat_answer_uses_real_data(self):
-        """BEFUND: Antworten sind fest verdrahtete Beispielzahlen (z. B. '23 Reservierungen'),
+        """BEHOBEN (fix/bbx-testbefunde), vorher BEFUND: Antworten sind fest verdrahtete Beispielzahlen (z. B. '23 Reservierungen'),
         unabhängig von der Datenbank. Hier: 0 Reservierungen in der DB."""
         from app_core import ai_service
         answer = ai_service.generate_chat_response([], 'Wie viele Reservierungen haben wir heute?')
         self.assertNotIn('23 Reservierungen', answer)
+        self.assertIn('keine Reservierungen', answer)
+
+    def test_chat_counts_todays_reservations(self):
+        from app_core import ai_service
+        from app_core.models import Guest, Reservation
+        g = Guest.objects.create(first_name='Chat', last_name='Test')
+        now = timezone.localtime()
+        when = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        Reservation.objects.create(guest=g, reservation_time=when, number_of_guests=4, status='confirmed')
+        Reservation.objects.create(guest=g, reservation_time=when, number_of_guests=2, status='cancelled_by_guest')
+        answer = ai_service.generate_chat_response([], 'Reservierungen heute?')
+        self.assertIn('2 Reservierungen', answer)
+        self.assertIn('4 Personen', answer)
+        self.assertIn('1 storniert', answer)

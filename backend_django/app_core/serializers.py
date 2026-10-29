@@ -270,6 +270,19 @@ class RegistrationFormSerializer(serializers.ModelSerializer):
     def get_nights(self, obj):
         return (obj.departure_date - obj.arrival_date).days
 
+    def validate(self, data):
+        data = super().validate(data)
+        inst = self.instance
+        arrival = data.get('arrival_date', getattr(inst, 'arrival_date', None))
+        departure = data.get('departure_date', getattr(inst, 'departure_date', None))
+        if arrival and departure and departure <= arrival:
+            raise serializers.ValidationError({'departure_date': 'Abreise muss nach der Anreise liegen.'})
+        purpose = data.get('travel_purpose', getattr(inst, 'travel_purpose', None))
+        company = data.get('company_name', getattr(inst, 'company_name', None))
+        if purpose == 'business' and not (company or '').strip():
+            raise serializers.ValidationError({'company_name': 'Bei Geschäftsreise ist der Firmenname Pflicht.'})
+        return data
+
 
 class SystemSettingsSerializer(serializers.ModelSerializer):
     """Serializer für Systemeinstellungen.
@@ -360,6 +373,7 @@ class ChatConversationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatConversation
         fields = '__all__'
+        read_only_fields = ('employee',)
 
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}" if obj.employee.first_name else obj.employee.username

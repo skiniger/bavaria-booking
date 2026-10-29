@@ -16,3 +16,10 @@ class ReadAuthenticatedWriteAdmin(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return is_admin_user(request.user)
+
+
+class AdminOnly(BasePermission):
+    """Nur Admins (Rolle 'admin' oder Superuser)."""
+
+    def has_permission(self, request, view):
+        return is_admin_user(request.user)
