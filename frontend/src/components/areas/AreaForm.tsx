@@ -98,7 +98,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -160,7 +160,7 @@ export const AreaForm: React.FC<AreaFormProps> = ({ onClose, area }) => {
                   onClick={() => setFormData({ ...formData, color: color.value })}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 transition-all ${
                     formData.color === color.value
-                      ? 'border-bavaria-blue bg-bavaria-blue bg-opacity-10'
+                      ? 'border-bavaria-blue bg-bavaria-blue/10'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >

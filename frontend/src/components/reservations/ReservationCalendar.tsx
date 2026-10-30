@@ -72,7 +72,7 @@ export default function ReservationCalendar({
               !isSameMonth(day, monthStart)
                 ? 'bg-gray-50 text-gray-400'
                 : isToday(day)
-                ? 'bg-bavaria-blue bg-opacity-10'
+                ? 'bg-bavaria-blue/10'
                 : 'bg-white hover:bg-gray-50'
             }`}
             onClick={() => onDateSelect(cloneDay)}

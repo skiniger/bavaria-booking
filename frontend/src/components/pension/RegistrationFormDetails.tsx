@@ -68,7 +68,7 @@ export default function RegistrationFormDetails({
   const statusColor = getStatusColor(form.status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
@@ -220,14 +220,14 @@ export default function RegistrationFormDetails({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Frühstück:</span>
                   <span className="font-medium">
-                    {form.breakfast_included ? `Ja (${form.breakfast_price.toFixed(2)} € / Tag)` : 'Nein'}
+                    {form.breakfast_included ? `Ja (${Number(form.breakfast_price).toFixed(2)} € / Tag)` : 'Nein'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Kurtaxe:</span>
                   <span className="font-medium">
                     {form.tourist_tax_required
-                      ? `${form.tourist_tax_amount.toFixed(2)} € / Nacht`
+                      ? `${Number(form.tourist_tax_amount).toFixed(2)} € gesamt`
                       : 'Befreit'}
                   </span>
                 </div>
@@ -242,37 +242,40 @@ export default function RegistrationFormDetails({
           </div>
 
           {/* Pricing */}
-          <div className="card bg-bavaria-blue bg-opacity-10">
+          <div className="card bg-bavaria-blue/10">
             <h3 className="font-bold text-lg mb-4 flex items-center text-bavaria-blue">
               <Euro className="w-5 h-5 mr-2" />
               Preisberechnung
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Übernachtung ({form.nights} × {form.room_price_per_night.toFixed(2)} €):</span>
+                <span>Übernachtung ({form.nights} × {Number(form.room_price_per_night).toFixed(2)} €):</span>
                 <span className="font-medium">
-                  {((form.nights || 0) * (form.room_price_per_night || 0)).toFixed(2)} €
+                  {((form.nights || 0) * Number(form.room_price_per_night || 0)).toFixed(2)} €
                 </span>
               </div>
               {form.breakfast_included && (
                 <div className="flex justify-between">
-                  <span>Frühstück ({form.nights} × {form.breakfast_price.toFixed(2)} €):</span>
+                  <span>Frühstück ({form.nights} × {Number(form.breakfast_price).toFixed(2)} €):</span>
                   <span className="font-medium">
-                    {((form.nights || 0) * form.breakfast_price).toFixed(2)} €
+                    {((form.nights || 0) * Number(form.breakfast_price)).toFixed(2)} €
                   </span>
                 </div>
               )}
               {form.tourist_tax_required && (
                 <div className="flex justify-between">
-                  <span>Kurtaxe ({form.nights} × {form.tourist_tax_amount.toFixed(2)} €):</span>
+                  <span>
+                    Kurtaxe ({form.nights} ×{' '}
+                    {(form.nights ? Number(form.tourist_tax_amount) / form.nights : Number(form.tourist_tax_amount)).toFixed(2)} €):
+                  </span>
                   <span className="font-medium">
-                    {((form.nights || 0) * form.tourist_tax_amount).toFixed(2)} €
+                    {Number(form.tourist_tax_amount).toFixed(2)} €
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-bavaria-blue">
                 <span className="text-bavaria-blue">Gesamtsumme:</span>
-                <span className="text-bavaria-blue">{form.total_amount.toFixed(2)} €</span>
+                <span className="text-bavaria-blue">{Number(form.total_amount).toFixed(2)} €</span>
               </div>
             </div>
           </div>

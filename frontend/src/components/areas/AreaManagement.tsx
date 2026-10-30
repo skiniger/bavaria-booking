@@ -189,7 +189,7 @@ export const AreaManagement: React.FC<AreaManagementProps> = ({
                       e.stopPropagation();
                       onManageTables?.(area.id);
                     }}
-                    className="px-3 py-1.5 text-sm text-bavaria-blue hover:bg-bavaria-blue hover:bg-opacity-10 rounded transition-colors flex items-center space-x-1"
+                    className="px-3 py-1.5 text-sm text-bavaria-blue hover:bg-bavaria-blue/10 rounded transition-colors flex items-center space-x-1"
                   >
                     <Grid className="h-4 w-4" />
                     <span>Tische</span>
@@ -225,7 +225,7 @@ export const AreaManagement: React.FC<AreaManagementProps> = ({
                         handleDelete(area);
                       }}
                       disabled={deleteMutation.isPending}
-                      className="p-1.5 text-sm text-bavaria-red hover:bg-bavaria-red hover:bg-opacity-10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 text-sm text-bavaria-red hover:bg-bavaria-red/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Löschen"
                     >
                       <Trash2 className="h-4 w-4" />

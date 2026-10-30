@@ -209,7 +209,10 @@ export interface SystemSettings {
   smtp_host?: string;
   smtp_port: number;
   smtp_username?: string;
+  /** Nur schreibbar – das Backend liefert das Passwort nie aus. */
   smtp_password?: string;
+  /** true, wenn ein SMTP-Passwort hinterlegt ist (nur für Admins). */
+  smtp_password_set?: boolean;
   smtp_use_tls: boolean;
   email_from_address?: string;
 

@@ -95,7 +95,7 @@ export default function ReservationDetails({
   const canCancel = ['pending_confirmation', 'confirmed'].includes(reservation.status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
@@ -203,7 +203,7 @@ export default function ReservationDetails({
 
           {/* Table Information */}
           {reservation.table_number && (
-            <div className="card bg-bavaria-blue bg-opacity-10">
+            <div className="card bg-bavaria-blue/10">
               <div className="flex items-center text-bavaria-blue mb-2">
                 <MapPin className="w-4 h-4 mr-2" />
                 <span className="text-sm font-medium">Tisch</span>

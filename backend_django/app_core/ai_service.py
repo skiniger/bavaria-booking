@@ -28,40 +28,23 @@ def generate_chat_response(conversation_history: List[Dict[str, str]], user_mess
 
     user_message_lower = user_message.lower()
 
-    # Regel-basierte Antworten basierend auf Keywords
-    if any(word in user_message_lower for word in ['auslastung', 'kapazität', 'auslastung', 'besetzt']):
-        return (
-            "Die aktuelle Auslastung liegt bei etwa 72%. "
-            "Basierend auf historischen Daten erwarte ich für heute Abend eine Auslastung von 85%. "
-            "Empfehlung: Stelle sicher, dass ausreichend Personal für den Abend eingeplant ist."
-        )
+    # Regel-basierte Antworten; Zahlen kommen live aus der Datenbank.
+    if any(word in user_message_lower for word in ['auslastung', 'kapazität', 'besetzt']):
+        return _answer_occupancy()
 
     elif any(word in user_message_lower for word in ['reservierung', 'reservierungen', 'buchung', 'buchungen']):
-        return (
-            "Heute haben wir 23 Reservierungen. "
-            "Davon sind 18 bestätigt, 3 warten auf Bestätigung und 2 wurden storniert. "
-            "Die Hauptstoßzeit ist zwischen 18:30 und 20:00 Uhr."
-        )
+        return _answer_reservations_today()
 
     elif any(word in user_message_lower for word in ['tisch', 'tische', 'frei', 'verfügbar']):
-        return (
-            "Aktuell sind 8 von 24 Tischen verfügbar. "
-            "Im Wirtshaus sind 3 Tische frei, im Wintergarten 2 und im Biergarten 3 Tische. "
-            "Für die Abendzeit empfehle ich, Tische 12-15 im Wirtshaus zu kombinieren für größere Gruppen."
-        )
+        return _answer_tables()
 
     elif any(word in user_message_lower for word in ['personal', 'mitarbeiter', 'team', 'anwesend']):
-        return (
-            "Derzeit sind 6 Mitarbeiter eingecheckt. "
-            "Die durchschnittliche Arbeitszeit liegt diese Woche bei 32 Stunden pro Person. "
-            "Basierend auf der erwarteten Auslastung empfehle ich für Samstag 2 zusätzliche Servicekräfte."
-        )
+        return _answer_staff()
 
     elif any(word in user_message_lower for word in ['umsatz', 'einnahmen', 'revenue']):
         return (
-            "Der Umsatz liegt heute bei ca. 2.450 EUR (Stand 16:00 Uhr). "
-            "Im Vergleich zum Vormonat sind wir 12% über Plan. "
-            "Die durchschnittliche Rechnungshöhe beträgt 42 EUR pro Gast."
+            "Umsatzdaten sind in BAVARIABOOKINGX nicht erfasst (keine Kassenanbindung). "
+            "Ich kann Ihnen aber die Reservierungen und die Auslastung von heute nennen."
         )
 
     elif any(word in user_message_lower for word in ['empfehlung', 'optimierung', 'tipp', 'vorschlag']):
@@ -74,9 +57,7 @@ def generate_chat_response(conversation_history: List[Dict[str, str]], user_mess
 
     elif any(word in user_message_lower for word in ['wetter', 'wettervorhersage']):
         return (
-            "Wettervorhersage für die nächsten 3 Tage: Sonnig, 24-26°C. "
-            "Empfehlung: Biergarten wird stark frequentiert sein. "
-            "Stelle sicher, dass alle Außentische einsatzbereit sind und ggf. zusätzliche Sonnenschirme bereitstehen."
+            "Eine Wetteranbindung gibt es noch nicht, daher kann ich keine Vorhersage nennen."
         )
 
     elif any(word in user_message_lower for word in ['öffnungszeiten', 'öffnungszeit', 'geöffnet']):
@@ -108,6 +89,71 @@ def generate_chat_response(conversation_history: List[Dict[str, str]], user_mess
             "'Wie ist die aktuelle Auslastung?', 'Welche Tische sind frei?' oder 'Wie viele Reservierungen haben wir heute?'"
         )
 
+
+
+_ACTIVE_STATUSES = ('pending_confirmation', 'confirmed', 'checked_in')
+_CANCELLED_STATUSES = ('cancelled_by_guest', 'cancelled_by_restaurant')
+
+
+def _today_reservations():
+    from .models import Reservation
+    today = timezone.localdate()
+    return Reservation.objects.filter(reservation_time__date=today)
+
+
+def _answer_reservations_today() -> str:
+    qs = _today_reservations()
+    total = qs.count()
+    if total == 0:
+        return "Heute gibt es keine Reservierungen."
+    confirmed = qs.filter(status__in=('confirmed', 'checked_in', 'checked_out', 'completed')).count()
+    pending = qs.filter(status='pending_confirmation').count()
+    cancelled = qs.filter(status__in=_CANCELLED_STATUSES).count()
+    guests = sum(r.number_of_guests or 0 for r in qs.exclude(status__in=_CANCELLED_STATUSES))
+    word = 'Reservierung' if total == 1 else 'Reservierungen'
+    return (f"Heute gibt es {total} {word} ({guests} Personen ohne Stornos): "
+            f"{confirmed} bestätigt, {pending} warten auf Bestätigung, {cancelled} storniert.")
+
+
+def _answer_tables() -> str:
+    from .models import Table
+    tables = Table.objects.filter(is_reservable=True).select_related('area')
+    total = tables.count()
+    if total == 0:
+        return "Es sind noch keine reservierbaren Tische angelegt."
+    now = timezone.now()
+    busy_ids = set()
+    for r in _today_reservations().filter(status__in=_ACTIVE_STATUSES, table__isnull=False):
+        end = r.reservation_time + timedelta(minutes=r.duration_minutes or 120)
+        if r.reservation_time <= now < end:
+            busy_ids.add(r.table_id)
+    free = [t for t in tables if t.id not in busy_ids and t.status not in ('occupied', 'out_of_service')]
+    per_area = {}
+    for t in free:
+        per_area[t.area.name] = per_area.get(t.area.name, 0) + 1
+    detail = ', '.join(f"{name}: {n}" for name, n in sorted(per_area.items()))
+    return f"Gerade sind {len(free)} von {total} Tischen frei" + (f" ({detail})." if detail else ".")
+
+
+def _answer_occupancy() -> str:
+    from .models import Table
+    capacity = sum(t.capacity for t in Table.objects.filter(is_reservable=True))
+    guests = sum(r.number_of_guests or 0 for r in _today_reservations().filter(status__in=_ACTIVE_STATUSES))
+    if capacity == 0:
+        return "Ohne angelegte Tische kann ich keine Auslastung berechnen."
+    pct = round(100 * guests / capacity)
+    return (f"Heute sind {guests} Personen reserviert bei {capacity} Plätzen "
+            f"(rechnerisch {pct} % einer Belegung, ohne Mehrfachbelegung der Tische).")
+
+
+def _answer_staff() -> str:
+    from .models import TimeTracking
+    open_entries = TimeTracking.objects.filter(check_out__isnull=True).select_related('employee')
+    n = open_entries.count()
+    if n == 0:
+        return "Derzeit ist niemand eingecheckt."
+    names = ', '.join(sorted({(e.employee.first_name or e.employee.username) for e in open_entries}))
+    return f"Derzeit {'ist' if n == 1 else 'sind'} {n} eingecheckt: {names}."
 
 def generate_analytics_insights(snapshot_data: Dict[str, Any]) -> List[str]:
     """

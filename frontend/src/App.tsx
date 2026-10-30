@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppContent() {
+function AppContent({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -75,7 +75,7 @@ function AppContent() {
         shortcuts={shortcuts}
       />
 
-      <OnboardingTour />
+      <OnboardingTour userId={userId} />
     </>
   );
 }
@@ -126,7 +126,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <AppContent />
+        <AppContent userId={user.id} />
       </Router>
     </QueryClientProvider>
   );

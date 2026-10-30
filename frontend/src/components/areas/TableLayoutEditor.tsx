@@ -416,7 +416,7 @@ export const TableLayoutEditor: React.FC<TableLayoutEditorProps> = ({ areaId, on
           </div>
 
           {/* Instructions */}
-          <div className="mt-4 p-4 bg-bavaria-blue bg-opacity-10 rounded-lg border border-bavaria-blue border-opacity-20">
+          <div className="mt-4 p-4 bg-bavaria-blue/10 rounded-lg border border-bavaria-blue border-opacity-20">
             <h4 className="text-sm font-semibold text-bavaria-blue mb-2">Bedienung</h4>
             <ul className="text-xs text-gray-700 space-y-1">
               <li>• Klicken und ziehen Sie Tische, um sie zu verschieben</li>

@@ -241,3 +241,135 @@ class ReservationRequestHardeningTests(TestCase):
         req.refresh_from_db()
         self.assertEqual(req.status, 'pending_review')
         self.assertEqual(Reservation.objects.count(), 0)
+
+
+# ---------------------------------------------------------------------------
+# Erweiterung 29.10.2026 (Branch test/bavariabookingx-tests): Randfälle Scoring
+# ---------------------------------------------------------------------------
+from app_core.services.reservation_filter import (  # noqa: E402
+    MAX_NORMAL_MESSAGE_LENGTH, MAX_PARTY_SIZE, MAX_FUTURE_DAYS, is_auto_approved,
+)
+
+
+class ScoreEdgeCaseTests(TestCase):
+    base = dict(first_name="Anna", last_name="Berg", phone_number="+49 (89) 123-4567",
+                email="anna@example.com", number_of_guests=2, message="")
+
+    def score(self, **kw):
+        data = dict(self.base, requested_time=timezone.now() + timedelta(days=3))
+        data.update(kw)
+        return score_submission(**data)
+
+    def test_threshold_boundary(self):
+        self.assertTrue(is_auto_approved(RISK_SCORE_THRESHOLD - 1))
+        self.assertFalse(is_auto_approved(RISK_SCORE_THRESHOLD))
+
+    def test_international_phone_formats_are_clean(self):
+        for phone in ("+49 89 1234567", "0049-89-1234567", "(089) 12 34 56", "089/1234567"):
+            score, reasons = self.score(phone_number=phone)
+            self.assertEqual(reasons, [], phone)
+
+    def test_phone_too_short_or_too_long_or_letters(self):
+        for phone in ("12345", "1" * 16, "089 CALL ME", ""):
+            _, reasons = self.score(phone_number=phone)
+            self.assertTrue(any('Telefon' in r for r in reasons), phone)
+
+    def test_www_link_without_scheme_is_detected(self):
+        score, _ = self.score(message="Infos unter www.example-phish.test bitte")
+        self.assertGreaterEqual(score, RISK_SCORE_THRESHOLD)
+
+    def test_uppercase_http_link_detected(self):
+        score, _ = self.score(message="HTTPS://EXAMPLE.TEST/x")
+        self.assertGreaterEqual(score, RISK_SCORE_THRESHOLD)
+
+    def test_disposable_email_domain_case_insensitive(self):
+        _, reasons = self.score(email="x@MAILINATOR.com")
+        self.assertTrue(any('E-Mail' in r for r in reasons))
+
+    def test_email_optional_does_not_score(self):
+        for email in (None, ""):
+            _, reasons = self.score(email=email)
+            self.assertEqual(reasons, [], email)
+
+    def test_long_message_alone_stays_below_threshold(self):
+        score, reasons = self.score(message="a b " * (MAX_NORMAL_MESSAGE_LENGTH // 4 + 10))
+        self.assertEqual(len(reasons), 1)
+        self.assertTrue(is_auto_approved(score))
+
+    def test_repeated_chars_detected(self):
+        _, reasons = self.score(message="Super!!!!!!!!")
+        self.assertTrue(any('wiederholte' in r for r in reasons))
+
+    def test_party_size_boundary(self):
+        _, r_ok = self.score(number_of_guests=MAX_PARTY_SIZE)
+        _, r_big = self.score(number_of_guests=MAX_PARTY_SIZE + 1)
+        self.assertEqual(r_ok, [])
+        self.assertTrue(any('Gruppe' in r for r in r_big))
+
+    def test_far_future_scores_but_stays_below_threshold(self):
+        score, reasons = self.score(requested_time=timezone.now() + timedelta(days=MAX_FUTURE_DAYS + 5))
+        self.assertTrue(any('Zukunft' in r for r in reasons))
+        self.assertTrue(is_auto_approved(score))
+
+    def test_today_slightly_in_past_is_tolerated(self):
+        # < 1 Tag in der Vergangenheit wird (bewusst) nicht als Vergangenheit gewertet.
+        _, reasons = self.score(requested_time=timezone.now() - timedelta(hours=2))
+        self.assertEqual(reasons, [])
+
+    def test_combination_link_plus_bad_email_quarantined(self):
+        score, reasons = self.score(email="kein-at", message="http://x.test")
+        self.assertGreaterEqual(score, RISK_SCORE_THRESHOLD)
+        self.assertEqual(len(reasons), 2)
+
+
+class RateLimitEdgeCaseTests(TestCase):
+    def setUp(self):
+        self.url = reverse('reservation-request-list')
+        self.payload = {
+            "first_name": "Maria", "last_name": "Huber", "phone_number": "089 1234567",
+            "requested_time": (timezone.now() + timedelta(days=2)).isoformat(),
+            "number_of_guests": 2, "message": "",
+        }
+
+    def test_same_email_from_different_ips_is_rate_limited(self):
+        for i in range(7):
+            self.client.post(self.url, dict(self.payload, email="Gleich@Example.com"),
+                             content_type='application/json', REMOTE_ADDR=f"10.0.0.{i + 1}")
+        self.assertEqual(Reservation.objects.count(), 5)
+
+    def test_old_requests_outside_window_do_not_count(self):
+        for i in range(6):
+            ReservationRequest.objects.create(
+                first_name="Alt", last_name="Anfrage", phone_number="089 1234567",
+                email=f"alt{i}@example.com", requested_time=timezone.now() + timedelta(days=1),
+                number_of_guests=2, source_ip="127.0.0.1", status='auto_approved',
+            )
+        ReservationRequest.objects.update(submitted_at=timezone.now() - timedelta(hours=2))
+        r = self.client.post(self.url, dict(self.payload, email="neu@example.com"), content_type='application/json')
+        self.assertEqual(ReservationRequest.objects.get(pk=r.data['id']).status, 'auto_approved')
+
+    def test_status_filter_on_list(self):
+        self.client.post(self.url, dict(self.payload, email="a@example.com"), content_type='application/json')
+        self.client.post(self.url, dict(self.payload, email="b@example.com", message="http://x.test"),
+                         content_type='application/json')
+        login_staff(self.client)
+        r = self.client.get(self.url + '?status=pending_review')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['count'], 1)
+
+    def test_auto_approval_reuses_existing_guest_by_email(self):
+        from app_core.models import Guest
+        for _ in range(2):
+            self.client.post(self.url, dict(self.payload, email="stamm@example.com"), content_type='application/json')
+        self.assertEqual(Guest.objects.filter(email__iexact="stamm@example.com").count(), 1)
+        self.assertEqual(Reservation.objects.count(), 2)
+
+    def test_reject_twice_returns_400(self):
+        login_staff(self.client)
+        req = ReservationRequest.objects.create(
+            first_name="V", last_name="F", phone_number="089 7654321",
+            requested_time=timezone.now() + timedelta(days=1), number_of_guests=2, status='pending_review',
+        )
+        url = reverse('reservation-request-reject', args=[req.id])
+        self.assertEqual(self.client.post(url).status_code, 200)
+        self.assertEqual(self.client.post(url).status_code, 400)

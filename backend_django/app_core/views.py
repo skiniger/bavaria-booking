@@ -6,6 +6,10 @@ from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from django.http import HttpResponse
 from datetime import datetime, timedelta
+import uuid
+
+from django.db.models.deletion import ProtectedError
+from rest_framework.exceptions import ValidationError
 
 from .models import (
     Area, Table, Guest, Reservation, TableCombination,
@@ -26,6 +30,7 @@ from .serializers import (
     ReservationRequestSerializer, ReservationRequestSubmitSerializer
 )
 from . import ai_service
+from .permissions import ReadAuthenticatedWriteAdmin, AdminOnly, is_admin_user
 from .services.reservation_filter import score_submission, is_auto_approved
 from .utils.pdf_exports import ReservationPDFExporter, RegistrationFormPDFExporter
 from .utils.csv_exports import (
@@ -143,6 +148,12 @@ class ReservationViewSet(viewsets.ModelViewSet):
             except ValueError:
                 # Ignoriere ungültiges Datumsformat oder gib einen Fehler zurück
                 pass
+        for param, value in (('guest_id', guest_id), ('table_id', table_id)):
+            if value:
+                try:
+                    uuid.UUID(str(value))
+                except ValueError:
+                    raise ValidationError({param: 'Ungültige ID (UUID erwartet).'})
         if guest_id:
             queryset = queryset.filter(guest_id=guest_id)
         if table_id:
@@ -263,7 +274,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         pdf_buffer = exporter.generate_single_reservation(reservation)
 
         response = HttpResponse(pdf_buffer, content_type='application/pdf')
-        filename = f"reservierung_{reservation.reservation_id or reservation.id}.pdf"
+        filename = f"reservierung_{reservation.id}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -286,14 +297,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
         if date_from_str:
             try:
                 date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__gte=date_from)
+                queryset = queryset.filter(reservation_time__date__gte=date_from)
             except ValueError:
                 pass
 
         if date_to_str:
             try:
                 date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__lte=date_to)
+                queryset = queryset.filter(reservation_time__date__lte=date_to)
             except ValueError:
                 pass
 
@@ -327,14 +338,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
         if date_from_str:
             try:
                 date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__gte=date_from)
+                queryset = queryset.filter(reservation_time__date__gte=date_from)
             except ValueError:
                 pass
 
         if date_to_str:
             try:
                 date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
-                queryset = queryset.filter(date__lte=date_to)
+                queryset = queryset.filter(reservation_time__date__lte=date_to)
             except ValueError:
                 pass
 
@@ -516,9 +527,18 @@ class TableCombinationViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    """API Endpunkt für Mitarbeiter"""
+    """API Endpunkt für Mitarbeiter.
+
+    Anlegen, Ändern und Löschen von Mitarbeitenden nur für Admins;
+    Lesen sowie Check-in/Check-out für alle angemeldeten Konten.
+    """
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [AdminOnly()]
+        return super().get_permissions()
 
     @action(detail=True, methods=['post'], url_path='check-in')
     def check_in(self, request, pk=None):
@@ -628,6 +648,16 @@ class PensionGuestViewSet(viewsets.ModelViewSet):
     """API Endpunkt für Pensionsgäste"""
     queryset = PensionGuest.objects.all()
     serializer_class = PensionGuestSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {'detail': 'Gast hat Meldescheine und kann nicht gelöscht werden. '
+                           'Meldescheine sind aufbewahrungspflichtig.'},
+                status=status.HTTP_409_CONFLICT,
+            )
 
     @action(detail=False, methods=['get'], url_path='search')
     def search_guests(self, request):
@@ -753,9 +783,10 @@ class RegistrationFormViewSet(viewsets.ModelViewSet):
 
 
 class SystemSettingsViewSet(viewsets.ModelViewSet):
-    """API Endpunkt für Systemeinstellungen"""
+    """API Endpunkt für Systemeinstellungen (Ändern nur Admin, SMTP-Passwort nie lesbar)."""
     queryset = SystemSettings.objects.all()
     serializer_class = SystemSettingsSerializer
+    permission_classes = [ReadAuthenticatedWriteAdmin]
 
 
 class DashboardViewSet(viewsets.ViewSet):
@@ -890,17 +921,26 @@ class ChatConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ChatConversationSerializer
 
     def get_queryset(self):
-        """Filter Konversationen nach Mitarbeiter"""
+        """Konversationen des angemeldeten Kontos; Admins dürfen per ?employee_id=<uuid> filtern."""
         queryset = super().get_queryset()
         employee_id = self.request.query_params.get('employee_id')
         is_active = self.request.query_params.get('is_active')
 
-        if employee_id:
+        if is_admin_user(self.request.user) and employee_id:
+            try:
+                uuid.UUID(str(employee_id))
+            except ValueError:
+                raise ValidationError({'employee_id': 'Ungültige ID (UUID erwartet).'})
             queryset = queryset.filter(employee_id=employee_id)
+        elif not is_admin_user(self.request.user):
+            queryset = queryset.filter(employee=self.request.user)
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
 
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(employee=self.request.user)
 
     @action(detail=True, methods=['post'], url_path='send-message')
     def send_message(self, request, pk=None):

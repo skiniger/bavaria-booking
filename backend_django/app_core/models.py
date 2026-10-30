@@ -400,6 +400,11 @@ class RegistrationForm(models.Model):
         nights = (self.departure_date - self.arrival_date).days
         room_total = self.room_price_per_night * nights
         breakfast_total = self.breakfast_price * nights if self.breakfast_included else 0
+        # Kurtaxe: tourist_tax_amount ist der GESAMTBETRAG für den Aufenthalt
+        # (Satz × Nächte × 1 Person je Meldeschein; die UI rechnet ihn so aus).
+        # Bei Befreiung (tourist_tax_required=False) fällt keine Kurtaxe an.
+        if not self.tourist_tax_required:
+            self.tourist_tax_amount = 0
         self.total_amount = room_total + breakfast_total + self.tourist_tax_amount
         super().save(*args, **kwargs)
 

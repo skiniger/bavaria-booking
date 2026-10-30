@@ -61,11 +61,11 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'bg-bavaria-red bg-opacity-10 text-bavaria-red';
+        return 'bg-bavaria-red/10 text-bavaria-red';
       case 'manager':
-        return 'bg-bavaria-blue bg-opacity-10 text-bavaria-blue';
+        return 'bg-bavaria-blue/10 text-bavaria-blue';
       case 'staff':
-        return 'bg-bavaria-green bg-opacity-10 text-bavaria-green';
+        return 'bg-bavaria-green/10 text-bavaria-green';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -256,7 +256,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 <div className="flex items-center justify-end space-x-2 pt-4 border-t border-gray-200">
                   <button
                     onClick={() => onViewDetails?.(employee.id)}
-                    className="px-3 py-1.5 text-sm text-bavaria-blue hover:bg-bavaria-blue hover:bg-opacity-10 rounded transition-colors"
+                    className="px-3 py-1.5 text-sm text-bavaria-blue hover:bg-bavaria-blue/10 rounded transition-colors"
                   >
                     Details
                   </button>
@@ -270,7 +270,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                   <button
                     onClick={() => handleDelete(employee)}
                     disabled={deleteMutation.isPending}
-                    className="px-3 py-1.5 text-sm text-bavaria-red hover:bg-bavaria-red hover:bg-opacity-10 rounded transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-sm text-bavaria-red hover:bg-bavaria-red/10 rounded transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="h-4 w-4" />
                     <span>Löschen</span>

@@ -6,6 +6,7 @@ import type { SystemSettings } from '../../types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { resetOnboardingTour } from '../../utils/onboardingTour';
+import { parseApiError } from '../../utils/errorHandling';
 
 export const AdvancedSettings: React.FC = () => {
   const queryClient = useQueryClient();
@@ -34,6 +35,9 @@ export const AdvancedSettings: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
       alert('Einstellungen erfolgreich gespeichert!');
+    },
+    onError: (error) => {
+      alert(`Einstellungen nicht gespeichert: ${parseApiError(error).message}`);
     },
   });
 
@@ -89,6 +93,8 @@ export const AdvancedSettings: React.FC = () => {
               type="password"
               value={formData.smtp_password || ''}
               onChange={(e) => setFormData({ ...formData, smtp_password: e.target.value })}
+              autoComplete="new-password"
+              placeholder={formData.smtp_password_set ? '•••••••• (gesetzt – leer lassen, um es zu behalten)' : 'Nicht gesetzt'}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bavaria-blue"
             />
           </div>
@@ -249,7 +255,7 @@ export const AdvancedSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 p-4 bg-bavaria-blue bg-opacity-10 rounded-lg border-l-4 border-bavaria-blue">
+        <div className="mt-4 p-4 bg-bavaria-blue/10 rounded-lg border-l-4 border-bavaria-blue">
           <p className="text-sm text-gray-700">
             <strong>Hinweis:</strong> Backups werden automatisch gemäß der konfigurierten
             Frequenz durchgeführt. Die Backup-Dateien werden auf dem Server gespeichert.

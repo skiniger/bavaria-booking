@@ -66,7 +66,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'guest', 'guest_details', 'table', 'table_details',
             'reservation_time', 'duration_minutes', 'number_of_guests',
-            'status', 'notes', 'created_at', 'updated_at'
+            'status', 'payment_method', 'notes', 'created_at', 'updated_at'
         ]
         read_only_fields = ['guest_details', 'table_details']
 
@@ -270,13 +270,54 @@ class RegistrationFormSerializer(serializers.ModelSerializer):
     def get_nights(self, obj):
         return (obj.departure_date - obj.arrival_date).days
 
+    def validate(self, data):
+        data = super().validate(data)
+        inst = self.instance
+        arrival = data.get('arrival_date', getattr(inst, 'arrival_date', None))
+        departure = data.get('departure_date', getattr(inst, 'departure_date', None))
+        if arrival and departure and departure <= arrival:
+            raise serializers.ValidationError({'departure_date': 'Abreise muss nach der Anreise liegen.'})
+        purpose = data.get('travel_purpose', getattr(inst, 'travel_purpose', None))
+        company = data.get('company_name', getattr(inst, 'company_name', None))
+        if purpose == 'business' and not (company or '').strip():
+            raise serializers.ValidationError({'company_name': 'Bei Geschäftsreise ist der Firmenname Pflicht.'})
+        return data
+
 
 class SystemSettingsSerializer(serializers.ModelSerializer):
-    """Serializer für Systemeinstellungen"""
+    """Serializer für Systemeinstellungen.
+
+    SMTP-Zugangsdaten: Das Passwort wird nie ausgeliefert (nur setzbar,
+    `smtp_password_set` zeigt an, ob eines hinterlegt ist). Ein leer
+    gesendetes Passwort überschreibt ein vorhandenes nicht. Die übrigen
+    SMTP-Felder sehen nur Admins (siehe permissions.is_admin_user).
+    """
+    SMTP_ADMIN_ONLY_FIELDS = ('smtp_host', 'smtp_port', 'smtp_username', 'smtp_use_tls', 'email_from_address')
+
+    smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True,
+                                          allow_null=True, max_length=200)
+    smtp_password_set = serializers.SerializerMethodField()
 
     class Meta:
         model = SystemSettings
         fields = '__all__'
+
+    def get_smtp_password_set(self, obj):
+        return bool(obj.smtp_password)
+
+    def to_representation(self, instance):
+        from .permissions import is_admin_user
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if not (request and is_admin_user(request.user)):
+            for field in self.SMTP_ADMIN_ONLY_FIELDS + ('smtp_password_set',):
+                data.pop(field, None)
+        return data
+
+    def update(self, instance, validated_data):
+        if not validated_data.get('smtp_password'):
+            validated_data.pop('smtp_password', None)
+        return super().update(instance, validated_data)
 
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
@@ -332,6 +373,7 @@ class ChatConversationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatConversation
         fields = '__all__'
+        read_only_fields = ('employee',)
 
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}" if obj.employee.first_name else obj.employee.username

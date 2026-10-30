@@ -4,6 +4,7 @@ import { Clock, MapPin, Save } from 'lucide-react';
 import { openingHoursAPI } from '../../services/api';
 import { areasAPI } from '../../services/api';
 import type { OpeningHours } from '../../types';
+import { parseApiError } from '../../utils/errorHandling';
 
 const WEEKDAYS = [
   { value: 0, label: 'Montag' },
@@ -118,6 +119,9 @@ export const OpeningHoursManager: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['openingHours'] });
     },
+    onError: (error) => {
+      alert(`Öffnungszeiten nicht gespeichert: ${parseApiError(error).message}`);
+    },
   });
 
   const handleSave = (weekday: number, isClosed: boolean, openTime?: string, closeTime?: string) => {
@@ -219,7 +223,7 @@ export const OpeningHoursManager: React.FC = () => {
       </div>
 
       {/* Info */}
-      <div className="bg-bavaria-blue bg-opacity-10 rounded-lg p-4 border-l-4 border-bavaria-blue">
+      <div className="bg-bavaria-blue/10 rounded-lg p-4 border-l-4 border-bavaria-blue">
         <div className="flex items-start space-x-3">
           <Clock className="h-5 w-5 text-bavaria-blue mt-0.5" />
           <div className="text-sm text-gray-700">

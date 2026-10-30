@@ -257,7 +257,7 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ on
                             {tracking.break_minutes || 0} Min
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-bavaria-green">
-                            {tracking.total_hours?.toFixed(2) || '0.00'}h
+                            {(tracking.total_hours != null ? Number(tracking.total_hours).toFixed(2) : '0.00')}h
                           </td>
                         </tr>
                       );

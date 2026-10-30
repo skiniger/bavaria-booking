@@ -82,7 +82,7 @@ export default function TableCombinationTool({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
@@ -145,7 +145,7 @@ export default function TableCombinationTool({
                 </div>
 
                 {selectedTables.length > 0 && (
-                  <div className="p-4 bg-bavaria-blue bg-opacity-10 rounded-lg">
+                  <div className="p-4 bg-bavaria-blue/10 rounded-lg">
                     <div className="font-medium text-bavaria-blue">
                       Ausgewählte Tische: {selectedTables.length}
                     </div>

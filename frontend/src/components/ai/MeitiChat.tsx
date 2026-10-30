@@ -9,16 +9,17 @@ import { de } from 'date-fns/locale';
 export const MeitiChat: React.FC = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
-  const [currentEmployeeId] = useState('mock-employee-id'); // TODO: Get from auth context
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   // Fetch conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
-    queryKey: ['chatConversations', currentEmployeeId],
+    // Das Backend liefert nur die Unterhaltungen des angemeldeten Kontos.
+    queryKey: ['chatConversations'],
     queryFn: async () => {
-      const response = await chatConversationsAPI.getAll({ employee_id: currentEmployeeId, is_active: true });
-      return response.data;
+      const response = await chatConversationsAPI.getAll({ is_active: true });
+      const data = response.data as ChatConversation[] | { results: ChatConversation[] };
+      return Array.isArray(data) ? data : data.results ?? [];
     },
   });
 
@@ -37,7 +38,6 @@ export const MeitiChat: React.FC = () => {
   const createConversationMutation = useMutation({
     mutationFn: async () => {
       return await chatConversationsAPI.create({
-        employee: currentEmployeeId,
         title: 'Neue Unterhaltung',
         is_active: true,
       });
